@@ -1,245 +1,617 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTMLRunner</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css"
+        id="hljs-light">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css"
+        id="hljs-dark" disabled>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/css.min.js"></script>
+    <script>
+        // Suppress highlight.js security warnings
+        window.hljs.configure({
+            ignoreUnescapedHTML: true
+        });
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
             height: 100vh;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
 
         .container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.1);
+            background: #f5f5f5;
         }
 
         .header {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 15px 20px;
+            background: linear-gradient(90deg, #2196F3, #21CBF3);
+            padding: 12px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .logo {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #181d21 0%, #1b2e35 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
         }
 
         .controls {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         .btn {
             padding: 8px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            color: white;
+            transition: background-color 0.2s, transform 0.1s;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
         }
 
         .btn-run {
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            background-color: #2196F3;
+            color: white;
         }
 
         .btn-clear {
-            background: linear-gradient(45deg, #f44336, #da190b);
-            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+            background-color: #f44336;
+            color: white;
         }
 
         .btn-reset {
-            background: linear-gradient(45deg, #2196F3, #0b7dda);
-            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+            background-color: #607D8B;
+            color: white;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            opacity: 0.9;
+            transform: none;
+            box-shadow: none;
         }
 
         .main {
             flex: 1;
             display: flex;
             overflow: hidden;
+            background-color: white;
+            margin: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .editor-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: rgba(30, 30, 30, 0.9);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            background: white;
+            border-right: 1px solid #e0e0e0;
         }
 
         .editor-tabs {
             display: flex;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
         }
 
         .tab {
             padding: 10px 20px;
             cursor: pointer;
-            color: rgba(255, 255, 255, 0.7);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
+            color: #757575;
+            border-right: 1px solid #e0e0e0;
+            transition: all 0.2s;
         }
 
         .tab.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
+            color: #2196F3;
+            background: white;
+            font-weight: 500;
         }
 
-        .tab.active::after {
-            content: '';
+        .editor-container {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .dark-mode .editor-container {
+            background: #2d2d2d;
+        }
+
+        .editor-wrapper {
+            position: relative;
+            height: 100%;
+            overflow: auto;
+            padding-left: 50px;
+        }
+
+        .line-numbers {
             position: absolute;
-            bottom: 0;
             left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            top: 0;
+            height: 100%;
+            width: 40px;
+            padding: 10px 5px;
+            text-align: right;
+            color: #999;
+            background: #f5f5f5;
+            border-right: 1px solid #e0e0e0;
+            user-select: none;
+            font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .dark-mode .line-numbers {
+            background: #252526;
+            color: #858585;
+            border-right-color: #444;
         }
 
         .editor {
-            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            margin: 0;
             border: none;
             outline: none;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
+            resize: none;
+            font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
             font-size: 14px;
             line-height: 1.5;
+            tab-size: 2;
+            white-space: pre;
             background: transparent;
-            color: #f8f8f2;
-            resize: none;
+            color: #333;
+            overflow: auto;
+        }
+
+        .dark-mode .editor {
+            color: #e0e0e0;
+            background: #1e1e1e;
+        }
+
+        .active-line {
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .bracket-match {
+            background: rgba(33, 150, 243, 0.3);
+            border-radius: 2px;
         }
 
         .output-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: rgba(20, 20, 20, 0.9);
+            background: white;
         }
 
         .output-tabs {
             display: flex;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
         }
 
         .output-content {
             flex: 1;
-            overflow: hidden;
+            overflow: auto;
+            background: white;
         }
 
-        .preview, .console {
+        .preview {
             height: 100%;
+            width: 100%;
             border: none;
             background: white;
             display: none;
         }
 
-        .preview.active, .console.active {
+        .preview.active {
             display: block;
         }
 
         .console {
-            background: #1e1e1e;
-            color: #d4d4d4;
+            height: 100%;
+            padding: 15px;
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            padding: 15px;
             overflow-y: auto;
-            white-space: pre-wrap;
+            background: white;
+            color: #212121;
+            display: none;
+        }
+
+        .console.active {
+            display: block;
         }
 
         .console-entry {
             margin-bottom: 8px;
             padding: 4px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
         }
 
         .console-log {
-            color: #d4d4d4;
+            color: #212121;
         }
 
         .console-error {
-            color: #f48771;
-            background: rgba(244, 135, 113, 0.1);
-            padding: 4px 8px;
-            border-left: 3px solid #f48771;
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 8px;
+            border-left: 3px solid #d32f2f;
             margin: 4px 0;
         }
 
         .console-warn {
-            color: #dcdcaa;
-            background: rgba(220, 220, 170, 0.1);
-            padding: 4px 8px;
-            border-left: 3px solid #dcdcaa;
+            color: #f57c00;
+            background: #fff3e0;
+            padding: 8px;
+            border-left: 3px solid #ff9800;
             margin: 4px 0;
         }
 
         .console-info {
-            color: #9cdcfe;
+            color: #0288d1;
         }
 
         .timestamp {
-            color: #6a6a6a;
+            color: #757575;
             font-size: 11px;
             margin-right: 8px;
         }
 
-        /* Scrollbar styles */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
         }
 
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
+        .loading.active {
+            opacity: 1;
+            pointer-events: all;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
+        .spinner {
+            border: 4px solid rgba(33, 150, 243, 0.2);
+            border-radius: 50%;
+            border-top: 4px solid #2196F3;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .console-object {
+            cursor: pointer;
+            color: #795548;
+            font-style: italic;
+        }
+
+        .console-object:before {
+            content: '▶ ';
+            font-size: 10px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .console-object.expanded:before {
+            transform: rotate(90deg);
+        }
+
+        .console-object-content {
+            display: none;
+            margin-left: 20px;
+            border-left: 1px solid #e0e0e0;
+            padding-left: 10px;
+        }
+
+        .console-object.expanded+.console-object-content {
+            display: block;
         }
 
         @media (max-width: 768px) {
             .main {
                 flex-direction: column;
             }
-            
-            .editor-panel, .output-panel {
-                flex: 1;
+
+            .editor-panel,
+            .output-panel {
+                width: 100%;
+                height: 50%;
             }
+
+            .editor-tabs,
+            .output-tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            .tab {
+                padding: 10px 15px;
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+
+            .btn {
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
+
+            .logo {
+                font-size: 1em;
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #d32f2f;
+            display: none;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        /* Dark mode gradient */
+        .dark-mode .header {
+            background: linear-gradient(135deg, #181d21 0%, #1b2e35 100%);
+        }
+
+        .dark-mode .logo {
+            background: linear-gradient(135deg, #64b5f6, #80d8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dark-mode .container {
+            background: #1a1a1a;
+        }
+
+        .dark-mode .main,
+        .dark-mode .editor-panel,
+        .dark-mode .output-panel,
+        .dark-mode .editor,
+        .dark-mode .preview,
+        .dark-mode .console {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .editor-tabs,
+        .dark-mode .output-tabs {
+            background: #333;
+            border-bottom-color: #444;
+        }
+
+        .dark-mode .tab {
+            color: #aaa;
+            border-right-color: #444;
+        }
+
+        .dark-mode .tab.active {
+            background: linear-gradient(135deg, #1e262c 0%, #23363e 100%);
+            color: #fff;
+        }
+
+        .dark-mode .console {
+            color: #e0e0e0;
+        }
+
+        .dark-mode .console-error {
+            background: #3e2723;
+            border-left-color: #d32f2f;
+        }
+
+        .dark-mode .console-warn {
+            background: #3e2c00;
+            border-left-color: #ff9800;
+        }
+
+        .dark-mode .console-info {
+            color: #4fc3f7;
+        }
+
+        .dark-mode .console-object {
+            color: #9cdcfe;
+        }
+
+        .dark-mode .console-object-content {
+            border-left-color: #444;
+        }
+
+        .dark-mode .timestamp {
+            color: #888;
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            background: none;
+            border: 2px solid #1A5E97;
+            color: #1A5E97;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .theme-toggle {
+            border-color: #64b5f6;
+            color: #64b5f6;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .dark-mode .theme-toggle:hover {
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .theme-toggle i {
+            font-size: 16px;
+        }
+
+        /* Dark mode styles for console text */
+        .dark-mode .console-log {
+            color: #9cdcfe;
+        }
+
+        .dark-mode .console-warn {
+            color: #dcdcaa;
+        }
+
+        .dark-mode .console-error {
+            color: #f48771;
+        }
+
+        .dark-mode .console-info {
+            color: #4fc3f7;
+        }
+
+        .dark-mode .console-debug {
+            color: #c586c0;
+        }
+
+        /* Highlight.js overrides for dark mode */
+        .dark-mode .hljs {
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .hljs-keyword,
+        .dark-mode .hljs-selector-tag,
+        .dark-mode .hljs-literal,
+        .dark-mode .hljs-section,
+        .dark-mode .hljs-link {
+            color: #569cd6;
+        }
+
+        .dark-mode .hljs-string,
+        .dark-mode .hljs-title,
+        .dark-mode .hljs-name,
+        .dark-mode .hljs-attribute,
+        .dark-mode .hljs-symbol,
+        .dark-mode .hljs-bullet,
+        .dark-mode .hljs-addition,
+        .dark-mode .hljs-variable,
+        .dark-mode .hljs-template-tag,
+        .dark-mode .hljs-template-variable {
+            color: #ce9178;
+        }
+
+        .dark-mode .hljs-comment,
+        .dark-mode .hljs-quote,
+        .dark-mode .hljs-deletion,
+        .dark-mode .hljs-meta {
+            color: #6a9955;
+        }
+
+        .dark-mode .hljs-keyword,
+        .dark-mode .hljs-selector-tag,
+        .dark-mode .hljs-literal,
+        .dark-mode .hljs-doctag,
+        .dark-mode .hljs-title,
+        .dark-mode .hljs-section,
+        .dark-mode .hljs-type,
+        .dark-mode .hljs-selector-id {
+            font-weight: bold;
+        }
+
+        /* Make sure the theme toggle works with highlight.js */
+        .dark-mode #hljs-light {
+            display: none;
+        }
+
+        .dark-mode #hljs-dark {
+            display: block;
+        }
+
+        #hljs-dark {
+            display: none;
         }
     </style>
 </head>
+
 <body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="error-message" id="error-message"></div>
+
     <div class="container">
         <div class="header">
             <div class="logo">HTMLRunner</div>
@@ -247,9 +619,13 @@
                 <button class="btn btn-run" onclick="runCode()">▶ Run</button>
                 <button class="btn btn-clear" onclick="clearConsole()">Clear Console</button>
                 <button class="btn btn-reset" onclick="resetCode()">Reset</button>
+                <button class="theme-toggle" onclick="toggleDarkMode()">
+                    <i class="fas fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
             </div>
         </div>
-        
+
         <div class="main">
             <div class="editor-panel">
                 <div class="editor-tabs">
@@ -257,73 +633,100 @@
                     <div class="tab" onclick="switchTab('css')">CSS</div>
                     <div class="tab" onclick="switchTab('js')">JavaScript</div>
                 </div>
-                
-                <textarea id="html-editor" class="editor" placeholder="Write your HTML here..."><!DOCTYPE html>
-<html>
-<head>
-    <title>My Page</title>
-</head>
-<body>
-    <h1>Hello, HTMLRunner!</h1>
-    <p>This is a demo page.</p>
-    <button onclick="testFunction()">Click me!</button>
-<\/body>
-<\/html></textarea>
-                
-                <textarea id="css-editor" class="editor" style="display: none;" placeholder="Write your CSS here...">body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-    color: white;
-}
 
-h1 {
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
+                <div class="editor-container">
+                    <div class="editor-wrapper">
+                        <div class="line-numbers" id="line-numbers"></div>
+                        <pre id="html-editor" class="editor" contenteditable="true" spellcheck="false">
+                            <code class="language-html">
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <title>My Page</title>
+                                </head>
+                                <body>
+                                    <h1>Hello, HTMLRunner!</h1>
+                                    <p>This is a demo page.</p>
+                                    <button onclick="testFunction()">Click me!</button>
+                                </body>
+                                </html>
+                            </code>
+                        </pre>
+                    </div>
+                </div>
 
-button {
-    padding: 10px 20px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
+                <div class="editor-container" style="display: none;">
+                    <div class="editor-wrapper">
+                        <div class="line-numbers" id="css-line-numbers"></div>
+                        <pre id="css-editor" class="editor" contenteditable="true" spellcheck="false">
+                            <code class="language-css">
+                                body {
+                                    font-family: Arial, sans-serif;
+                                    margin: 20px;
+                                    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+                                    color: white;
+                                }
 
-button:hover {
-    background: #764ba2;
-    transform: translateY(-2px);
-}</textarea>
-                
-                <textarea id="js-editor" class="editor" style="display: none;" placeholder="Write your JavaScript here...">function testFunction() {
-    console.log('Button clicked!');
-    console.warn('This is a warning message');
-    console.error('This is an error message');
-    console.info('This is an info message');
-    
-    // Try some calculations
-    const result = Math.random() * 100;
-    console.log('Random number:', result.toFixed(2));
-    
-    // Test object logging
-    const user = {
-        name: 'Alice',
-        age: 25,
-        hobbies: ['coding', 'reading', 'gaming']
-    };
-    console.log('User object:', user);
-}</textarea>
+                                h1 {
+                                    color: #fff;
+                                    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                                }
+
+                                button {
+                                    padding: 10px 20px;
+                                    background: #667eea;
+                                    color: white;
+                                    border: none;
+                                    border-radius: 5px;
+                                    cursor: pointer;
+                                    font-size: 16px;
+                                    transition: all 0.3s ease;
+                                }
+
+                                button:hover {
+                                    background: #764ba2;
+                                    transform: translateY(-2px);
+                                }
+                            </code>
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="editor-container" style="display: none;">
+                    <div class="editor-wrapper">
+                        <div class="line-numbers" id="js-line-numbers"></div>
+                        <pre id="js-editor" class="editor" contenteditable="true" spellcheck="false">
+                            <code class="language-javascript">
+                                function testFunction() {
+                                    console.log('Button clicked!');
+                                    console.warn('This is a warning message');
+                                    console.error('This is an error message');
+                                    console.info('This is an info message');
+                                    
+                                    // Try some calculations
+                                    const result = Math.random() * 100;
+                                    console.log('Random number:', result.toFixed(2));
+                                    
+                                    // Test object logging
+                                    const user = {
+                                        name: 'Alice',
+                                        age: 25,
+                                        hobbies: ['coding', 'reading', 'gaming']
+                                    };
+                                    console.log('User object:', user);
+                                }
+                            </code>
+                        </pre>
+                    </div>
+                </div>
             </div>
-            
+
             <div class="output-panel">
                 <div class="output-tabs">
                     <div class="tab active" onclick="switchOutput('preview')">Preview</div>
                     <div class="tab" onclick="switchOutput('console')">Console</div>
                 </div>
-                
+
                 <div class="output-content">
                     <iframe id="preview" class="preview active"></iframe>
                     <div id="console" class="console"></div>
@@ -336,114 +739,334 @@ button:hover {
         let currentTab = 'html';
         let currentOutput = 'preview';
         let consoleOutput = document.getElementById('console');
+        let isDarkMode = false;
 
-        function switchTab(tab) {
-            // Hide all editors
-            document.getElementById('html-editor').style.display = 'none';
-            document.getElementById('css-editor').style.display = 'none';
-            document.getElementById('js-editor').style.display = 'none';
-            
-            // Show selected editor
-            document.getElementById(tab + '-editor').style.display = 'block';
-            
-            // Update tab styles
-            document.querySelectorAll('.editor-tabs .tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            currentTab = tab;
+        const state = {
+            html: '',
+            css: '',
+            js: '',
+            activeTab: 'html',
+            activeOutput: 'preview'
+        };
+
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error-message');
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadState();
+            runCode();
+
+            document.querySelectorAll('.editor').forEach(editor => {
+                editor.addEventListener('input', debounce(saveState, 500));
+            });
+
+            // Load dark mode preference
+            isDarkMode = localStorage.getItem('darkMode') === 'true';
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                updateThemeIcon();
+            }
+
+            // Initialize highlight.js
+            hljs.highlightAll();
+
+            // Initialize editors with line numbers and highlighting
+            initializeEditors();
+        });
+
+        window.addEventListener('message', function (event) {
+            if (event.data.type === 'console') {
+                const entry = document.createElement('div');
+                entry.className = 'console-entry';
+
+                const timestamp = document.createElement('span');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = new Date().toLocaleTimeString();
+
+                const message = document.createElement('span');
+                message.className = `console-${event.data.level}`;
+
+                if (event.data.data && event.data.data.length > 0) {
+                    event.data.data.forEach((item, i) => {
+                        if (i > 0) message.appendChild(document.createTextNode(' '));
+
+                        if (item && typeof item === 'object') {
+                            message.appendChild(renderObject(item));
+                        } else {
+                            const text = String(item);
+                            message.appendChild(document.createTextNode(text));
+                        }
+                    });
+                }
+
+                entry.appendChild(timestamp);
+                entry.appendChild(document.createTextNode(' '));
+                entry.appendChild(message);
+                consoleOutput.appendChild(entry);
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            }
+        });
+
+        function renderObject(obj, level = 0) {
+            if (obj === null) {
+                return document.createTextNode('null');
+            }
+
+            if (typeof obj !== 'object') {
+                return document.createTextNode(String(obj));
+            }
+
+            if (Array.isArray(obj)) {
+                return renderArray(obj, level);
+            }
+
+            const container = document.createElement('span');
+
+            if (obj instanceof Error) {
+                const errorEl = document.createElement('span');
+                errorEl.className = 'console-error';
+                errorEl.textContent = `${obj.name}: ${obj.message}`;
+                if (obj.stack) {
+                    errorEl.textContent += `\n${obj.stack.split('\n').slice(1).join('\n')}`;
+                }
+                container.appendChild(errorEl);
+                return container;
+            }
+
+            const preview = document.createElement('span');
+            preview.className = 'console-object';
+            preview.textContent = Array.isArray(obj) ? `Array(${obj.length})` : '{...}';
+
+            const content = document.createElement('div');
+            content.className = 'console-object-content';
+
+            Object.entries(obj).forEach(([key, value]) => {
+                const prop = document.createElement('div');
+                prop.textContent = `${key}: `;
+
+                if (value && typeof value === 'object') {
+                    prop.appendChild(renderObject(value, level + 1));
+                } else {
+                    prop.appendChild(document.createTextNode(
+                        typeof value === 'string' ? `"${value}"` : String(value)
+                    ));
+                }
+
+                content.appendChild(prop);
+            });
+
+            preview.addEventListener('click', (e) => {
+                e.stopPropagation();
+                preview.classList.toggle('expanded');
+            });
+
+            container.appendChild(preview);
+            container.appendChild(content);
+            return container;
         }
 
-        function switchOutput(output) {
-            // Hide all outputs
-            document.getElementById('preview').classList.remove('active');
-            document.getElementById('console').classList.remove('active');
-            
-            // Show selected output
-            document.getElementById(output).classList.add('active');
-            
-            // Update tab styles
-            document.querySelectorAll('.output-tabs .tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            currentOutput = output;
+        function renderArray(arr, level) {
+            const container = document.createElement('span');
+            const preview = document.createElement('span');
+            preview.className = 'console-object';
+            preview.textContent = `Array(${arr.length})`;
+
+            const content = document.createElement('div');
+            content.className = 'console-object-content';
+
+            arr.forEach((item, i) => {
+                const el = document.createElement('div');
+                el.textContent = `${i}: `;
+
+                if (item && typeof item === 'object') {
+                    el.appendChild(renderObject(item, level + 1));
+                } else {
+                    el.appendChild(document.createTextNode(
+                        typeof item === 'string' ? `"${item}"` : String(item)
+                    ));
+                }
+
+                content.appendChild(el);
+            });
+
+            preview.addEventListener('click', (e) => {
+                e.stopPropagation();
+                preview.classList.toggle('expanded');
+            });
+
+            container.appendChild(preview);
+            container.appendChild(content);
+            return container;
+        }
+
+        function saveState() {
+            state.html = document.querySelector('#html-editor code').textContent;
+            state.css = document.querySelector('#css-editor code').textContent;
+            state.js = document.querySelector('#js-editor code').textContent;
+            state.activeTab = document.querySelector('.editor-tabs .tab.active').dataset.tab;
+            state.activeOutput = document.querySelector('.output-tabs .tab.active').dataset.output;
+
+            try {
+                localStorage.setItem('htmlRunnerState', JSON.stringify(state));
+            } catch (e) {
+                showError('Failed to save state: ' + e.message);
+            }
+        }
+
+        function loadState() {
+            try {
+                const savedState = localStorage.getItem('htmlRunnerState');
+                if (savedState) {
+                    const parsed = JSON.parse(savedState);
+
+                    if (parsed.html) document.querySelector('#html-editor code').textContent = parsed.html;
+                    if (parsed.css) document.querySelector('#css-editor code').textContent = parsed.css;
+                    if (parsed.js) document.querySelector('#js-editor code').textContent = parsed.js;
+
+                    if (parsed.activeTab) {
+                        const tab = document.querySelector(`.editor-tabs .tab[data-tab="${parsed.activeTab}"]`);
+                        if (tab) tab.click();
+                    }
+
+                    if (parsed.activeOutput) {
+                        const output = document.querySelector(`.output-tabs .tab[data-output="${parsed.activeOutput}"]`);
+                        if (output) output.click();
+                    }
+
+                    // Update line numbers and highlighting after loading state
+                    initializeEditors();
+                }
+            } catch (e) {
+                showError('Failed to load saved state: ' + e.message);
+            }
+        }
+
+        function showLoading() {
+            loadingEl.classList.add('active');
+        }
+
+        function hideLoading() {
+            loadingEl.classList.remove('active');
+        }
+
+        function showError(message) {
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function () {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
         }
 
         function runCode() {
-            const html = document.getElementById('html-editor').value;
-            const css = document.getElementById('css-editor').value;
-            const js = document.getElementById('js-editor').value;
-            
-            const fullCode = `
-                <style>${css}</style>
-                ${html}
-                <script>
-                    // Override console methods to capture output
-                    (function() {
-                        const originalConsole = {
-                            log: console.log,
-                            error: console.error,
-                            warn: console.warn,
-                            info: console.info
-                        };
-                        
-                        function sendToParent(type, args) {
-                            const timestamp = new Date().toLocaleTimeString();
-                            const message = Array.from(args).map(arg => {
-                                if (typeof arg === 'object') {
-                                    try {
-                                        return JSON.stringify(arg, null, 2);
-                                    } catch (e) {
-                                        return arg.toString();
-                                    }
-                                }
-                                return arg;
-                            }).join(' ');
+            showLoading();
+            clearConsole();
+
+            try {
+                const html = document.querySelector('#html-editor code').textContent;
+                const css = document.querySelector('#css-editor code').textContent;
+                const js = document.querySelector('#js-editor code').textContent;
+
+                const fullCode = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>${css}</style>
+                        <script>
+                            // Override console methods to send messages to parent
+                            const originalConsole = {
+                                log: console.log,
+                                error: console.error,
+                                warn: console.warn,
+                                info: console.info
+                            };
                             
-                            window.parent.postMessage({
-                                type: 'console',
-                                level: type,
-                                message: message,
-                                timestamp: timestamp
-                            }, '*');
-                        }
-                        
-                        console.log = function(...args) {
-                            originalConsole.log.apply(console, args);
-                            sendToParent('log', args);
-                        };
-                        
-                        console.error = function(...args) {
-                            originalConsole.error.apply(console, args);
-                            sendToParent('error', args);
-                        };
-                        
-                        console.warn = function(...args) {
-                            originalConsole.warn.apply(console, args);
-                            sendToParent('warn', args);
-                        };
-                        
-                        console.info = function(...args) {
-                            originalConsole.info.apply(console, args);
-                            sendToParent('info', args);
-                        };
-                        
-                        // Capture errors
-                        window.addEventListener('error', function(e) {
-                            sendToParent('error', [e.message + ' at line ' + e.lineno]);
-                        });
-                    })();
-                    
-                    ${js}
-                <\/script>
-            `;
-            
-            const preview = document.getElementById('preview');
-            const blob = new Blob([fullCode], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            preview.src = url;
-            
-            // Clean up the blob URL after a short delay
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+                            function sendToConsole(level, ...args) {
+                                window.parent.postMessage({
+                                    type: 'console',
+                                    level: level,
+                                    data: args,
+                                    timestamp: new Date().toISOString()
+                                }, '*');
+                                
+                                // Call original console method
+                                originalConsole[level].apply(console, args);
+                            }
+                            
+                            console.log = (...args) => sendToConsole('log', ...args);
+                            console.error = (...args) => sendToConsole('error', ...args);
+                            console.warn = (...args) => sendToConsole('warn', ...args);
+                            console.info = (...args) => sendToConsole('info', ...args);
+                            
+                            // Handle uncaught errors
+                            window.onerror = function(message, source, lineno, colno, error) {
+                                sendToConsole('error', error || message);
+                                return true; // Prevent default error handling
+                            };
+                            
+                            // Handle unhandled promise rejections
+                            window.onunhandledrejection = function(event) {
+                                sendToConsole('error', event.reason || 'Unhandled promise rejection');
+                            };
+                        <\/script>
+                    </head>
+                    <body>${html}</body>
+                    <script>${js}<\/script>
+                    </html>
+                `;
+
+                const preview = document.getElementById('preview');
+                const blob = new Blob([fullCode], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                preview.src = url;
+
+                if (document.querySelector('.output-tabs .tab[data-output="preview"]')) {
+                    document.querySelector('.output-tabs .tab[data-output="preview"]').click();
+                }
+
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                saveState();
+            } catch (error) {
+                showError(`Error running code: ${error.message}`);
+                console.error('Code execution error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('html-editor').style.display = 'none';
+            document.getElementById('css-editor').style.display = 'none';
+            document.getElementById('js-editor').style.display = 'none';
+
+            document.getElementById(tab + '-editor').style.display = 'block';
+
+            document.querySelectorAll('.editor-tabs .tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            saveState();
+        }
+
+        function switchOutput(output) {
+            document.getElementById('preview').classList.remove('active');
+            document.getElementById('console').classList.remove('active');
+
+            document.getElementById(output).classList.add('active');
+
+            document.querySelectorAll('.output-tabs .tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            saveState();
         }
 
         function clearConsole() {
@@ -451,8 +1074,8 @@ button:hover {
         }
 
         function resetCode() {
-            if (confirm('Are you sure you want to reset all code? This cannot be undone.')) {
-                document.getElementById('html-editor').value = `<!DOCTYPE html>
+            if (confirm('Are you sure you want to reset all code to default?')) {
+                document.querySelector('#html-editor code').textContent = `<!DOCTYPE html>
 <html>
 <head>
     <title>My Page</title>
@@ -463,94 +1086,301 @@ button:hover {
     <button onclick="testFunction()">Click me!</button>
 </body>
 </html>`;
-                
-                document.getElementById('css-editor').value = `body {
+
+                document.querySelector('#css-editor code').textContent = `body {
     font-family: Arial, sans-serif;
     margin: 20px;
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-    color: white;
-}
-
-h1 {
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    line-height: 1.6;
 }
 
 button {
-    padding: 10px 20px;
-    background: #667eea;
+    background: #2196F3;
     color: white;
     border: none;
-    border-radius: 5px;
+    padding: 10px 15px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
-    transition: all 0.3s ease;
+    transition: background 0.3s, transform 0.2s;
 }
 
 button:hover {
-    background: #764ba2;
+    background: #1976D2;
     transform: translateY(-2px);
 }`;
-                
-                document.getElementById('js-editor').value = `function testFunction() {
-    console.log('Button clicked!');
-    console.warn('This is a warning message');
-    console.error('This is an error message');
-    console.info('This is an info message');
-    
-    // Try some calculations
-    const result = Math.random() * 100;
-    console.log('Random number:', result.toFixed(2));
-    
-    // Test object logging
-    const user = {
-        name: 'Alice',
-        age: 25,
-        hobbies: ['coding', 'reading', 'gaming']
-    };
-    console.log('User object:', user);
-}`;
-                
-                clearConsole();
+
+                document.querySelector('#js-editor code').textContent = `function testFunction() {
+                    console.log('Button clicked!');
+                    console.warn('This is a warning message');
+                    console.error('This is an error message');
+                    console.info('This is an info message');
+                    
+                    // Try some calculations
+                    const result = Math.random() * 100;
+                    console.log('Random number:', result.toFixed(2));
+                    
+                    // Test object logging
+                    const user = {
+                        name: 'Alice',
+                        age: 25,
+                        hobbies: ['coding', 'reading', 'gaming'],
+                        details: {
+                            email: 'alice@example.com',
+                            active: true
+                        }
+                    };
+                    
+                    console.log('User object:', user);
+                    
+                    // Test array logging
+                    const numbers = [1, 2, 3, 4, 5];
+                    console.log('Numbers array:', numbers);
+                    
+                    // Test error logging with proper error handling
+                    try {
+                        // This will throw an error
+                        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string
+                        console.log('Parsed JSON:', data);
+                    } catch (error) {
+                        console.error('Failed to parse JSON:', error.message);
+                    }
+                    
+                    // Test promise with proper error handling
+                    Promise.resolve('This is a resolved promise')
+                        .then(result => console.log('Promise resolved:', result))
+                        .catch(error => console.error('Promise rejected:', error.message));
+                }`;
+
                 runCode();
+                saveState();
             }
         }
 
-        // Listen for console messages from iframe
-        window.addEventListener('message', function(event) {
-            if (event.data.type === 'console') {
-                const entry = document.createElement('div');
-                entry.className = 'console-entry';
-                
-                const timestamp = document.createElement('span');
-                timestamp.className = 'timestamp';
-                timestamp.textContent = event.data.timestamp;
-                
-                const message = document.createElement('span');
-                message.className = 'console-' + event.data.level;
-                message.textContent = event.data.message;
-                
-                entry.appendChild(timestamp);
-                entry.appendChild(message);
-                consoleOutput.appendChild(entry);
-                
-                // Auto-scroll to bottom
-                consoleOutput.scrollTop = consoleOutput.scrollHeight;
-            }
-        });
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+            updateThemeIcon();
+            updateCodeHighlighting();
+        }
 
-        // Auto-run on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            runCode();
-        });
+        function updateCodeHighlighting() {
+            // Remove old highlighting
+            document.querySelectorAll('.hljs').forEach(el => {
+                el.classList.remove('hljs');
+                el.removeAttribute('style');
+            });
 
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                runCode();
+            // Apply new highlighting
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        function updateThemeIcon() {
+            const icon = document.querySelector('.theme-toggle i');
+            if (isDarkMode) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                document.querySelector('.theme-toggle span').textContent = 'Light Mode';
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                document.querySelector('.theme-toggle span').textContent = 'Dark Mode';
             }
-        });
+        }
+
+        function updateLineNumbers(editorId, lineNumbersElement) {
+            const editor = document.getElementById(editorId);
+            const lines = editor.value.split('\n');
+            let numbers = '';
+
+            for (let i = 1; i <= lines.length; i++) {
+                numbers += i + '\n';
+            }
+
+            lineNumbersElement.innerHTML = numbers || '\n';
+
+            // Sync scroll position
+            lineNumbersElement.scrollTop = editor.scrollTop;
+        }
+
+        function highlightMatchingBrackets(editor) {
+            // Remove previous highlights
+            const text = editor.value;
+            const cursorPos = editor.selectionStart;
+            const matchingPairs = [
+                { open: '(', close: ')' },
+                { open: '{', close: '}' },
+                { open: '[', close: ']' },
+                { open: '<', close: '>' }
+            ];
+
+            // Clear previous highlights
+            const codeElement = editor.nextElementSibling;
+            if (codeElement) {
+                codeElement.querySelectorAll('.bracket-match').forEach(el => {
+                    el.classList.remove('bracket-match');
+                });
+            }
+
+            // Find matching brackets
+            if (cursorPos > 0) {
+                const charBefore = text[cursorPos - 1];
+                const charAfter = cursorPos < text.length ? text[cursorPos] : '';
+
+                for (const pair of matchingPairs) {
+                    if (pair.open === charBefore || pair.close === charAfter) {
+                        const stack = [];
+                        let matchPos = -1;
+
+                        // Search backward for matching bracket
+                        if (pair.open === charBefore) {
+                            stack.push(pair.open);
+                            for (let i = cursorPos; i < text.length; i++) {
+                                if (text[i] === pair.open) {
+                                    stack.push(pair.open);
+                                } else if (text[i] === pair.close) {
+                                    stack.pop();
+                                    if (stack.length === 0) {
+                                        matchPos = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else if (pair.close === charAfter) {
+                            stack.push(pair.close);
+                            for (let i = cursorPos - 2; i >= 0; i--) {
+                                if (text[i] === pair.close) {
+                                    stack.push(pair.close);
+                                } else if (text[i] === pair.open) {
+                                    stack.pop();
+                                    if (stack.length === 0) {
+                                        matchPos = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Highlight matching brackets
+                        if (matchPos !== -1) {
+                            const codeElement = editor.nextElementSibling;
+                            if (codeElement) {
+                                const spans = codeElement.querySelectorAll('span');
+                                if (spans[cursorPos - 1]) spans[cursorPos - 1].classList.add('bracket-match');
+                                if (spans[matchPos]) spans[matchPos].classList.add('bracket-match');
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        function initializeEditors() {
+            const editors = [
+                { id: 'html-editor', language: 'html' },
+                { id: 'css-editor', language: 'css' },
+                { id: 'js-editor', language: 'javascript' }
+            ];
+
+            editors.forEach(({ id, language }) => {
+                const editor = document.getElementById(id);
+                const container = editor.parentElement;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'editor-wrapper';
+
+                const lineNumbers = document.createElement('div');
+                lineNumbers.className = 'line-numbers';
+
+                // Move the editor into the wrapper
+                wrapper.appendChild(lineNumbers);
+                wrapper.appendChild(editor);
+                container.appendChild(wrapper);
+
+                // Initialize line numbers
+                updateLineNumbers(id, lineNumbers);
+
+                // Add event listeners
+                editor.addEventListener('input', () => {
+                    updateLineNumbers(id, lineNumbers);
+                    highlightMatchingBrackets(editor);
+                    saveState();
+                });
+
+                editor.addEventListener('scroll', () => {
+                    lineNumbers.scrollTop = editor.scrollTop;
+                });
+
+                // Handle tab key for indentation
+                editor.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = editor.selectionStart;
+                        const end = editor.selectionEnd;
+                        const value = editor.value;
+
+                        if (e.shiftKey) {
+                            // Handle unindent with Shift+Tab
+                            const before = value.substring(0, start);
+                            const after = value.substring(end);
+                            const lineStart = before.lastIndexOf('\n') + 1;
+                            const line = value.substring(lineStart, start);
+                            const match = line.match(/^\s+/);
+
+                            if (match) {
+                                const spaces = match[0];
+                                const toRemove = Math.min(2, spaces.length);
+
+                                editor.value = before.substring(0, lineStart) +
+                                    before.substring(lineStart + toRemove) +
+                                    after;
+                                editor.selectionStart = start - toRemove;
+                                editor.selectionEnd = end - toRemove;
+                            }
+                        } else {
+                            // Handle indent with Tab
+                            const indent = '  '; // 2 spaces
+                            editor.value = value.substring(0, start) +
+                                indent +
+                                value.substring(end);
+                            editor.selectionStart = start + indent.length;
+                            editor.selectionEnd = start + indent.length;
+                        }
+
+                        updateLineNumbers(id, lineNumbers);
+                        highlightMatchingBrackets(editor);
+                    }
+
+                    // Auto-indent on new line
+                    if (e.key === 'Enter') {
+                        const start = editor.selectionStart;
+                        const value = editor.value;
+                        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                        const line = value.substring(lineStart, start);
+                        const match = line.match(/^\s*/);
+
+                        if (match) {
+                            e.preventDefault();
+                            const indent = match[0];
+                            const newText = '\n' + indent;
+                            editor.value = value.substring(0, start) +
+                                newText +
+                                value.substring(start);
+                            editor.selectionStart = start + newText.length;
+                            editor.selectionEnd = start + newText.length;
+                            updateLineNumbers(id, lineNumbers);
+                        }
+                    }
+                });
+
+                // Initial highlighting
+                highlightMatchingBrackets(editor);
+            });
+        }
     </script>
 </body>
+
 </html>
