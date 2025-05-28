@@ -2,6 +2,14 @@
 declare global {
     interface Window {
         prettierPlugins: any[];
+        runCode: () => void;
+        clearConsole: () => void;
+        resetCode: () => void;
+        formatCode: () => Promise<void>;
+        toggleAutoRun: () => void;
+        toggleDarkMode: () => void;
+        switchTab: (tab: string) => void;
+        switchOutput: (output: string) => void;
     }
 }
 
@@ -18,10 +26,11 @@ import 'codemirror/addon/lint/javascript-lint';
 import 'codemirror/addon/lint/css-lint';
 import 'codemirror/addon/lint/html-lint';
 import Split from 'split.js';
-import prettier from 'prettier/standalone';
-import parserHtml from 'prettier/plugins/html';
-import parserCss from 'prettier/plugins/postcss';
-import parserBabel from 'prettier/plugins/babel';
+import * as prettier from 'prettier/standalone';
+import * as parserHtml from 'prettier/plugins/html';
+import * as parserCss from 'prettier/plugins/postcss';
+import * as parserFlow from 'prettier/plugins/flow';
+import * as prettierPluginEstree from "prettier/plugins/estree";
 import { ModuleBlock } from 'typescript';
 
 interface CodeMirrorInstance {
@@ -81,7 +90,8 @@ const state: State = {
 };
 
 // Register Prettier plugins
-window.prettierPlugins = [parserHtml, parserCss, parserBabel];
+const plugins = [parserHtml, parserCss, parserFlow];
+window.prettierPlugins = plugins;
 
 // Global variables with type assertions
 let currentTab: string = 'html';
@@ -388,16 +398,27 @@ function runCode() {
 async function formatCode() {
     try {
         const formattedHtml = await prettier.format(editors.html.getValue(), { 
-            parser: 'html', 
-            plugins: window.prettierPlugins 
+            parser: 'html',
+            plugins: [parserHtml],
+            printWidth: 100,
+            tabWidth: 2,
+            htmlWhitespaceSensitivity: 'css'
         });
         const formattedCss = await prettier.format(editors.css.getValue(), { 
-            parser: 'css', 
-            plugins: window.prettierPlugins 
+            parser: 'css',
+            plugins: [parserCss],
+            printWidth: 100,
+            tabWidth: 2
         });
         const formattedJs = await prettier.format(editors.js.getValue(), { 
-            parser: 'babel', 
-            plugins: window.prettierPlugins 
+            parser: 'flow',
+            plugins: [parserFlow, (prettierPluginEstree as any).default || prettierPluginEstree],
+            printWidth: 100,
+            tabWidth: 2,
+            semi: true,
+            singleQuote: true,
+            trailingComma: 'es5',
+            bracketSpacing: true
         });
         
         editors.html.setValue(formattedHtml);
@@ -412,9 +433,13 @@ async function formatCode() {
 // Switch editor tab
 function switchTab(tab: string): void {
     currentTab = tab;
+    // Hide all containers and remove active class from all tabs
     document.querySelectorAll('.editor-container').forEach(c => {
         const container = c as HTMLElement;
         container.style.display = 'none';
+    });
+    document.querySelectorAll('.editor-tabs .tab').forEach(t => {
+        t.classList.remove('active');
     });
     
     const editorContainer = document.getElementById(`${tab}-editor-container`);
@@ -428,6 +453,7 @@ function switchTab(tab: string): void {
     editorContainer.style.display = 'block';
     tabElement.classList.add('active');
     editors[tab].focus();
+    editors[tab].refresh(); // Ensure CodeMirror updates its display
     saveState();
 }
 
@@ -586,6 +612,18 @@ function debounce<T extends (...args: any[]) => any>(
         timeout = window.setTimeout(() => func.apply(this, args), wait);
     };
 }
+
+// Expose functions to window object
+Object.assign(window, {
+    runCode,
+    clearConsole,
+    resetCode,
+    formatCode,
+    toggleAutoRun,
+    toggleDarkMode,
+    switchTab,
+    switchOutput
+});
 
 // Initialize
 document.addEventListener('DOMContentLoaded', initializeEditors);
