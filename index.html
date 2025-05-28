@@ -163,7 +163,7 @@
             position: absolute;
             left: 0;
             top: 0;
-            height: 100%;
+            min-height: 100%;
             width: 40px;
             padding: 10px 5px;
             text-align: right;
@@ -172,8 +172,9 @@
             border-right: 1px solid #e0e0e0;
             user-select: none;
             font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.5;
+            pointer-events: none;
         }
 
         .dark-mode .line-numbers {
@@ -194,6 +195,7 @@
             font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
             font-size: 14px;
             line-height: 1.5;
+            padding: 10px;
             tab-size: 2;
             white-space: pre;
             background: transparent;
@@ -278,6 +280,9 @@
             padding: 8px;
             border-left: 3px solid #d32f2f;
             margin: 4px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            display: block;
         }
 
         .console-warn {
@@ -286,6 +291,9 @@
             padding: 8px;
             border-left: 3px solid #ff9800;
             margin: 4px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            display: block;
         }
 
         .console-info {
@@ -629,102 +637,37 @@
         <div class="main">
             <div class="editor-panel">
                 <div class="editor-tabs">
-                    <div class="tab active" onclick="switchTab('html')">HTML</div>
-                    <div class="tab" onclick="switchTab('css')">CSS</div>
-                    <div class="tab" onclick="switchTab('js')">JavaScript</div>
+                    <div class="tab active" data-tab="html" onclick="switchTab('html')">HTML</div>
+                    <div class="tab" data-tab="css" onclick="switchTab('css')">CSS</div>
+                    <div class="tab" data-tab="js" onclick="switchTab('js')">JavaScript</div>
                 </div>
 
                 <div class="editor-container">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="line-numbers"></div>
-                        <pre id="html-editor" class="editor" contenteditable="true" spellcheck="false">
-                            <code class="language-html">
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <title>My Page</title>
-                                </head>
-                                <body>
-                                    <h1>Hello, HTMLRunner!</h1>
-                                    <p>This is a demo page.</p>
-                                    <button onclick="testFunction()">Click me!</button>
-                                </body>
-                                </html>
-                            </code>
-                        </pre>
+                        <pre id="html-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
                     </div>
                 </div>
 
                 <div class="editor-container" style="display: none;">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="css-line-numbers"></div>
-                        <pre id="css-editor" class="editor" contenteditable="true" spellcheck="false">
-                            <code class="language-css">
-                                body {
-                                    font-family: Arial, sans-serif;
-                                    margin: 20px;
-                                    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-                                    color: white;
-                                }
-
-                                h1 {
-                                    color: #fff;
-                                    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                                }
-
-                                button {
-                                    padding: 10px 20px;
-                                    background: #667eea;
-                                    color: white;
-                                    border: none;
-                                    border-radius: 5px;
-                                    cursor: pointer;
-                                    font-size: 16px;
-                                    transition: all 0.3s ease;
-                                }
-
-                                button:hover {
-                                    background: #764ba2;
-                                    transform: translateY(-2px);
-                                }
-                            </code>
-                        </pre>
+                        <pre id="css-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
                     </div>
                 </div>
 
                 <div class="editor-container" style="display: none;">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="js-line-numbers"></div>
-                        <pre id="js-editor" class="editor" contenteditable="true" spellcheck="false">
-                            <code class="language-javascript">
-                                function testFunction() {
-                                    console.log('Button clicked!');
-                                    console.warn('This is a warning message');
-                                    console.error('This is an error message');
-                                    console.info('This is an info message');
-                                    
-                                    // Try some calculations
-                                    const result = Math.random() * 100;
-                                    console.log('Random number:', result.toFixed(2));
-                                    
-                                    // Test object logging
-                                    const user = {
-                                        name: 'Alice',
-                                        age: 25,
-                                        hobbies: ['coding', 'reading', 'gaming']
-                                    };
-                                    console.log('User object:', user);
-                                }
-                            </code>
-                        </pre>
+                        <pre id="js-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
                     </div>
                 </div>
             </div>
 
             <div class="output-panel">
                 <div class="output-tabs">
-                    <div class="tab active" onclick="switchOutput('preview')">Preview</div>
-                    <div class="tab" onclick="switchOutput('console')">Console</div>
+                    <div class="tab active" data-output="preview" onclick="switchOutput('preview')">Preview</div>
+                    <div class="tab" data-output="console" onclick="switchOutput('console')">Console</div>
                 </div>
 
                 <div class="output-content">
@@ -755,7 +698,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             loadState();
             runCode();
-
+            // Only call initializeEditors once
+            initializeEditors();
             document.querySelectorAll('.editor').forEach(editor => {
                 editor.addEventListener('input', debounce(saveState, 500));
             });
@@ -769,9 +713,6 @@
 
             // Initialize highlight.js
             hljs.highlightAll();
-
-            // Initialize editors with line numbers and highlighting
-            initializeEditors();
         });
 
         window.addEventListener('message', function (event) {
@@ -899,10 +840,26 @@
             return container;
         }
 
+        function getEditorText(editor) {
+            // Remove zero-width spaces and preserve newlines
+            return editor.innerText.replace(/\u200B/g, '');
+        }
+
+        function setEditorText(editor, text) {
+            // Preserve newlines when setting text and ensure consistent line endings
+            const normalizedText = text.replace(/\r\n/g, '\n');
+            editor.innerText = normalizedText;
+            
+            // Force a line number update
+            const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
+                                (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
+            updateLineNumbers(editor.id, document.getElementById(lineNumbersId));
+        }
+
         function saveState() {
-            state.html = document.querySelector('#html-editor code').textContent;
-            state.css = document.querySelector('#css-editor code').textContent;
-            state.js = document.querySelector('#js-editor code').textContent;
+            state.html = getEditorText(document.getElementById('html-editor'));
+            state.css = getEditorText(document.getElementById('css-editor'));
+            state.js = getEditorText(document.getElementById('js-editor'));
             state.activeTab = document.querySelector('.editor-tabs .tab.active').dataset.tab;
             state.activeOutput = document.querySelector('.output-tabs .tab.active').dataset.output;
 
@@ -919,9 +876,9 @@
                 if (savedState) {
                     const parsed = JSON.parse(savedState);
 
-                    if (parsed.html) document.querySelector('#html-editor code').textContent = parsed.html;
-                    if (parsed.css) document.querySelector('#css-editor code').textContent = parsed.css;
-                    if (parsed.js) document.querySelector('#js-editor code').textContent = parsed.js;
+                    if (parsed.html) setEditorText(document.getElementById('html-editor'), parsed.html);
+                    if (parsed.css) setEditorText(document.getElementById('css-editor'), parsed.css);
+                    if (parsed.js) setEditorText(document.getElementById('js-editor'), parsed.js);
 
                     if (parsed.activeTab) {
                         const tab = document.querySelector(`.editor-tabs .tab[data-tab="${parsed.activeTab}"]`);
@@ -972,60 +929,70 @@
             clearConsole();
 
             try {
-                const html = document.querySelector('#html-editor code').textContent;
-                const css = document.querySelector('#css-editor code').textContent;
-                const js = document.querySelector('#js-editor code').textContent;
+                const html = getEditorText(document.getElementById('html-editor'));
+                const css = getEditorText(document.getElementById('css-editor'));
+                const js = getEditorText(document.getElementById('js-editor'));
 
-                const fullCode = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>${css}</style>
-                        <script>
-                            // Override console methods to send messages to parent
-                            const originalConsole = {
-                                log: console.log,
-                                error: console.error,
-                                warn: console.warn,
-                                info: console.info
-                            };
-                            
-                            function sendToConsole(level, ...args) {
-                                window.parent.postMessage({
-                                    type: 'console',
-                                    level: level,
-                                    data: args,
-                                    timestamp: new Date().toISOString()
-                                }, '*');
-                                
-                                // Call original console method
-                                originalConsole[level].apply(console, args);
-                            }
-                            
-                            console.log = (...args) => sendToConsole('log', ...args);
-                            console.error = (...args) => sendToConsole('error', ...args);
-                            console.warn = (...args) => sendToConsole('warn', ...args);
-                            console.info = (...args) => sendToConsole('info', ...args);
-                            
-                            // Handle uncaught errors
-                            window.onerror = function(message, source, lineno, colno, error) {
-                                sendToConsole('error', error || message);
-                                return true; // Prevent default error handling
-                            };
-                            
-                            // Handle unhandled promise rejections
-                            window.onunhandledrejection = function(event) {
-                                sendToConsole('error', event.reason || 'Unhandled promise rejection');
-                            };
-                        <\/script>
-                    </head>
-                    <body>${html}</body>
-                    <script>${js}<\/script>
-                    </html>
+                // Get or create iframe
+                let preview = document.getElementById('preview');
+                
+                // Create a new iframe with sandbox permissions
+                const newFrame = document.createElement('iframe');
+                newFrame.id = 'preview';
+                newFrame.className = 'preview' + (preview.classList.contains('active') ? ' active' : '');
+                newFrame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-modals allow-popups allow-forms');
+                preview.parentNode.replaceChild(newFrame, preview);
+                preview = newFrame;
+
+                // Create a blob with the content and proper content type
+                const consoleInterceptor = `
+                    const originalConsole = {
+                        log: console.log,
+                        error: console.error,
+                        warn: console.warn,
+                        info: console.info
+                    };
+                    
+                    function sendToConsole(level, ...args) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: level,
+                            data: args,
+                            timestamp: new Date().toISOString()
+                        }, '*');
+                        originalConsole[level].apply(console, args);
+                    }
+                    
+                    console.log = (...args) => sendToConsole('log', ...args);
+                    console.error = (...args) => sendToConsole('error', ...args);
+                    console.warn = (...args) => sendToConsole('warn', ...args);
+                    console.info = (...args) => sendToConsole('info', ...args);
+                    
+                    window.onerror = function(message, source, lineno, colno, error) {
+                        sendToConsole('error', error || message);
+                        return true;
+                    };
+                    
+                    window.onunhandledrejection = function(event) {
+                        sendToConsole('error', event.reason);
+                    };
                 `;
 
-                const preview = document.getElementById('preview');
-                const blob = new Blob([fullCode], { type: 'text/html' });
+                // Build the HTML document in parts to avoid script parsing issues
+                const parts = [
+                    '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+                    '<style>', css, '</style>',
+                    '<script>', consoleInterceptor, '<\/script>',
+                    '</head><body>', html, '</body>',
+                    '<script>', js, '<\/script></html>'
+                ];
+
+                // Create blob with proper encoding
+                const blob = new Blob(parts, { 
+                    type: 'text/html; charset=utf-8'
+                });
+                
+                // Set up the iframe with the blob URL
                 const url = URL.createObjectURL(blob);
                 preview.src = url;
 
@@ -1033,7 +1000,16 @@
                     document.querySelector('.output-tabs .tab[data-output="preview"]').click();
                 }
 
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                // Clean up the blob URL after the iframe loads
+                preview.addEventListener('load', function cleanup() {
+                    URL.revokeObjectURL(url);
+                    preview.removeEventListener('load', cleanup);
+                });
+
+                // Switch to preview tab
+                if (document.querySelector('.output-tabs .tab[data-output="preview"]')) {
+                    document.querySelector('.output-tabs .tab[data-output="preview"]').click();
+                }
 
                 saveState();
             } catch (error) {
@@ -1045,27 +1021,45 @@
         }
 
         function switchTab(tab) {
-            document.getElementById('html-editor').style.display = 'none';
-            document.getElementById('css-editor').style.display = 'none';
-            document.getElementById('js-editor').style.display = 'none';
-
-            document.getElementById(tab + '-editor').style.display = 'block';
-
+            // Hide all editor containers
+            document.querySelectorAll('.editor-container').forEach(c => c.style.display = 'none');
+            // Show the correct editor container
+            if (tab === 'html') {
+                document.querySelectorAll('.editor-container')[0].style.display = 'block';
+            } else if (tab === 'css') {
+                document.querySelectorAll('.editor-container')[1].style.display = 'block';
+            } else if (tab === 'js') {
+                document.querySelectorAll('.editor-container')[2].style.display = 'block';
+            }
             document.querySelectorAll('.editor-tabs .tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-
+            const tabEl = document.querySelector(`.editor-tabs .tab[data-tab="${tab}"]`);
+            if (tabEl) tabEl.classList.add('active');
+            // Update line numbers for the active editor
+            const lineId = tab === 'html' ? 'line-numbers' : (tab === 'css' ? 'css-line-numbers' : 'js-line-numbers');
+            updateLineNumbers(tab + '-editor', document.getElementById(lineId));
+            // Focus the editor and move caret to end
+            setTimeout(() => {
+                const editor = document.getElementById(tab + '-editor');
+                editor.focus();
+                if (document.createRange && window.getSelection) {
+                    const range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }, 0);
             saveState();
         }
 
         function switchOutput(output) {
             document.getElementById('preview').classList.remove('active');
             document.getElementById('console').classList.remove('active');
-
             document.getElementById(output).classList.add('active');
-
             document.querySelectorAll('.output-tabs .tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-
+            const tabEl = document.querySelector(`.output-tabs .tab[data-output="${output}"]`);
+            if (tabEl) tabEl.classList.add('active');
             saveState();
         }
 
@@ -1075,7 +1069,7 @@
 
         function resetCode() {
             if (confirm('Are you sure you want to reset all code to default?')) {
-                document.querySelector('#html-editor code').textContent = `<!DOCTYPE html>
+                const defaultHtml = `<!DOCTYPE html>
 <html>
 <head>
     <title>My Page</title>
@@ -1087,7 +1081,7 @@
 </body>
 </html>`;
 
-                document.querySelector('#css-editor code').textContent = `body {
+                const defaultCss = `body {
     font-family: Arial, sans-serif;
     margin: 20px;
     line-height: 1.6;
@@ -1109,48 +1103,9 @@ button:hover {
     transform: translateY(-2px);
 }`;
 
-                document.querySelector('#js-editor code').textContent = `function testFunction() {
-                    console.log('Button clicked!');
-                    console.warn('This is a warning message');
-                    console.error('This is an error message');
-                    console.info('This is an info message');
-                    
-                    // Try some calculations
-                    const result = Math.random() * 100;
-                    console.log('Random number:', result.toFixed(2));
-                    
-                    // Test object logging
-                    const user = {
-                        name: 'Alice',
-                        age: 25,
-                        hobbies: ['coding', 'reading', 'gaming'],
-                        details: {
-                            email: 'alice@example.com',
-                            active: true
-                        }
-                    };
-                    
-                    console.log('User object:', user);
-                    
-                    // Test array logging
-                    const numbers = [1, 2, 3, 4, 5];
-                    console.log('Numbers array:', numbers);
-                    
-                    // Test error logging with proper error handling
-                    try {
-                        // This will throw an error
-                        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string
-                        console.log('Parsed JSON:', data);
-                    } catch (error) {
-                        console.error('Failed to parse JSON:', error.message);
-                    }
-                    
-                    // Test promise with proper error handling
-                    Promise.resolve('This is a resolved promise')
-                        .then(result => console.log('Promise resolved:', result))
-                        .catch(error => console.error('Promise rejected:', error.message));
-                }`;
-
+                setEditorText(document.getElementById('html-editor'), defaultHtml);
+                setEditorText(document.getElementById('css-editor'), defaultCss);
+                setEditorText(document.getElementById('js-editor'), `function testFunction() {\n    console.log('Button clicked!');\n    console.warn('This is a warning message');\n    console.error('This is an error message');\n    console.info('This is an info message');\n    \n    // Try some calculations\n    const result = Math.random() * 100;\n    console.log('Random number:', result.toFixed(2));\n    \n    // Test object logging\n    const user = {\n        name: 'Alice',\n        age: 25,\n        hobbies: ['coding', 'reading', 'gaming'],\n        details: {\n            email: 'alice@example.com',\n            active: true\n        }\n    };\n    \n    console.log('User object:', user);\n    \n    // Test array logging\n    const numbers = [1, 2, 3, 4, 5];\n    console.log('Numbers array:', numbers);\n    \n    // Test error logging with proper error handling\n    try {\n        // This will throw an error\n        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string\n        console.log('Parsed JSON:', data);\n    } catch (error) {\n        console.error('Failed to parse JSON:', error.message);\n    }\n    \n    // Test promise with proper error handling\n    Promise.resolve('This is a resolved promise')\n        .then(result => console.log('Promise resolved:', result))\n        .catch(error => console.error('Promise rejected:', error.message));\n}`);
                 runCode();
                 saveState();
             }
@@ -1192,192 +1147,70 @@ button:hover {
 
         function updateLineNumbers(editorId, lineNumbersElement) {
             const editor = document.getElementById(editorId);
-            const lines = editor.value.split('\n');
-            let numbers = '';
-
+            let lines = getEditorText(editor).split('\n');
+            if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) lines = [''];
+            let html = '';
             for (let i = 1; i <= lines.length; i++) {
-                numbers += i + '\n';
+                html += `<div>${i}</div>`;
             }
-
-            lineNumbersElement.innerHTML = numbers || '\n';
-
-            // Sync scroll position
+            lineNumbersElement.innerHTML = html;
             lineNumbersElement.scrollTop = editor.scrollTop;
-        }
-
-        function highlightMatchingBrackets(editor) {
-            // Remove previous highlights
-            const text = editor.value;
-            const cursorPos = editor.selectionStart;
-            const matchingPairs = [
-                { open: '(', close: ')' },
-                { open: '{', close: '}' },
-                { open: '[', close: ']' },
-                { open: '<', close: '>' }
-            ];
-
-            // Clear previous highlights
-            const codeElement = editor.nextElementSibling;
-            if (codeElement) {
-                codeElement.querySelectorAll('.bracket-match').forEach(el => {
-                    el.classList.remove('bracket-match');
-                });
-            }
-
-            // Find matching brackets
-            if (cursorPos > 0) {
-                const charBefore = text[cursorPos - 1];
-                const charAfter = cursorPos < text.length ? text[cursorPos] : '';
-
-                for (const pair of matchingPairs) {
-                    if (pair.open === charBefore || pair.close === charAfter) {
-                        const stack = [];
-                        let matchPos = -1;
-
-                        // Search backward for matching bracket
-                        if (pair.open === charBefore) {
-                            stack.push(pair.open);
-                            for (let i = cursorPos; i < text.length; i++) {
-                                if (text[i] === pair.open) {
-                                    stack.push(pair.open);
-                                } else if (text[i] === pair.close) {
-                                    stack.pop();
-                                    if (stack.length === 0) {
-                                        matchPos = i;
-                                        break;
-                                    }
-                                }
-                            }
-                        } else if (pair.close === charAfter) {
-                            stack.push(pair.close);
-                            for (let i = cursorPos - 2; i >= 0; i--) {
-                                if (text[i] === pair.close) {
-                                    stack.push(pair.close);
-                                } else if (text[i] === pair.open) {
-                                    stack.pop();
-                                    if (stack.length === 0) {
-                                        matchPos = i;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Highlight matching brackets
-                        if (matchPos !== -1) {
-                            const codeElement = editor.nextElementSibling;
-                            if (codeElement) {
-                                const spans = codeElement.querySelectorAll('span');
-                                if (spans[cursorPos - 1]) spans[cursorPos - 1].classList.add('bracket-match');
-                                if (spans[matchPos]) spans[matchPos].classList.add('bracket-match');
-                            }
-                        }
-
-                        break;
-                    }
-                }
-            }
         }
 
         function initializeEditors() {
             const editors = [
-                { id: 'html-editor', language: 'html' },
-                { id: 'css-editor', language: 'css' },
-                { id: 'js-editor', language: 'javascript' }
+                { id: 'html-editor', lineId: 'line-numbers' },
+                { id: 'css-editor', lineId: 'css-line-numbers' },
+                { id: 'js-editor', lineId: 'js-line-numbers' }
             ];
-
-            editors.forEach(({ id, language }) => {
+            editors.forEach(({ id, lineId }) => {
                 const editor = document.getElementById(id);
-                const container = editor.parentElement;
-                const wrapper = document.createElement('div');
-                wrapper.className = 'editor-wrapper';
-
-                const lineNumbers = document.createElement('div');
-                lineNumbers.className = 'line-numbers';
-
-                // Move the editor into the wrapper
-                wrapper.appendChild(lineNumbers);
-                wrapper.appendChild(editor);
-                container.appendChild(wrapper);
-
-                // Initialize line numbers
-                updateLineNumbers(id, lineNumbers);
-
-                // Add event listeners
+                const lineNumbers = document.getElementById(lineId);
+                const update = () => updateLineNumbers(id, lineNumbers);
+                update();
                 editor.addEventListener('input', () => {
-                    updateLineNumbers(id, lineNumbers);
-                    highlightMatchingBrackets(editor);
+                    update();
                     saveState();
                 });
-
+                editor.addEventListener('paste', () => {
+                    setTimeout(update, 0);
+                });
+                editor.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        
+                        // Get current selection
+                        const selection = window.getSelection();
+                        const range = selection.getRangeAt(0);
+                        
+                        // Get the content before cursor in the current line
+                        let currentLine = '';
+                        let node = range.startContainer;
+                        let offset = range.startOffset;
+                        
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            currentLine = node.textContent.substring(0, offset);
+                        }
+                        
+                        // Get indentation of the current line
+                        const match = currentLine.match(/^\s+/);
+                        const indentation = match ? match[0] : '';
+                        
+                        // Insert a single newline with indentation
+                        document.execCommand('insertText', false, '\n' + indentation);
+                        
+                        // Update line numbers once
+                        update();
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        document.execCommand('insertText', false, '  ');
+                    } else if (["Backspace", "Delete"].includes(e.key)) {
+                        setTimeout(update, 0);
+                    }
+                });
                 editor.addEventListener('scroll', () => {
                     lineNumbers.scrollTop = editor.scrollTop;
                 });
-
-                // Handle tab key for indentation
-                editor.addEventListener('keydown', (e) => {
-                    if (e.key === 'Tab') {
-                        e.preventDefault();
-                        const start = editor.selectionStart;
-                        const end = editor.selectionEnd;
-                        const value = editor.value;
-
-                        if (e.shiftKey) {
-                            // Handle unindent with Shift+Tab
-                            const before = value.substring(0, start);
-                            const after = value.substring(end);
-                            const lineStart = before.lastIndexOf('\n') + 1;
-                            const line = value.substring(lineStart, start);
-                            const match = line.match(/^\s+/);
-
-                            if (match) {
-                                const spaces = match[0];
-                                const toRemove = Math.min(2, spaces.length);
-
-                                editor.value = before.substring(0, lineStart) +
-                                    before.substring(lineStart + toRemove) +
-                                    after;
-                                editor.selectionStart = start - toRemove;
-                                editor.selectionEnd = end - toRemove;
-                            }
-                        } else {
-                            // Handle indent with Tab
-                            const indent = '  '; // 2 spaces
-                            editor.value = value.substring(0, start) +
-                                indent +
-                                value.substring(end);
-                            editor.selectionStart = start + indent.length;
-                            editor.selectionEnd = start + indent.length;
-                        }
-
-                        updateLineNumbers(id, lineNumbers);
-                        highlightMatchingBrackets(editor);
-                    }
-
-                    // Auto-indent on new line
-                    if (e.key === 'Enter') {
-                        const start = editor.selectionStart;
-                        const value = editor.value;
-                        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-                        const line = value.substring(lineStart, start);
-                        const match = line.match(/^\s*/);
-
-                        if (match) {
-                            e.preventDefault();
-                            const indent = match[0];
-                            const newText = '\n' + indent;
-                            editor.value = value.substring(0, start) +
-                                newText +
-                                value.substring(start);
-                            editor.selectionStart = start + newText.length;
-                            editor.selectionEnd = start + newText.length;
-                            updateLineNumbers(id, lineNumbers);
-                        }
-                    }
-                });
-
-                // Initial highlighting
-                highlightMatchingBrackets(editor);
             });
         }
     </script>
