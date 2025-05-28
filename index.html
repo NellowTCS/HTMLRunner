@@ -858,6 +858,7 @@
                     lines.push(node.textContent.replace(/\u200B/g, ''));
                 }
             });
+            // Do NOT remove blank lines here; preserve all lines for editing
             // Remove trailing empty lines (from extra <br> at end)
             while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
             // If the only line is empty, return ''
@@ -869,6 +870,26 @@
             // Use <br> tags for newlines to preserve multi-line formatting
             const normalizedText = text.replace(/\r\n/g, '\n');
             let lines = normalizedText.split('\n');
+            // Do NOT remove blank lines here; preserve all lines for editing
+            editor.innerHTML = '';
+            if (lines.length === 1 && lines[0] === '') {
+                // If text is empty, insert a single <br> for a truly empty editor
+                editor.appendChild(document.createElement('br'));
+            } else {
+                lines.forEach((line, idx) => {
+                    if (idx > 0) editor.appendChild(document.createElement('br'));
+                    if (line.length > 0) editor.appendChild(document.createTextNode(line));
+                });
+            }
+            // Force a line number update
+            const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
+                                (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
+            updateLineNumbers(editor.id, document.getElementById(lineNumbersId));
+        }
+
+        // Helper to compact code (remove leading/trailing blank lines and collapse multiple blank lines)
+        function compactCode(text) {
+            let lines = text.replace(/\r\n/g, '\n').split('\n');
             // Remove leading and trailing blank lines
             while (lines.length > 0 && lines[0].trim() === '') lines.shift();
             while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
@@ -886,22 +907,7 @@
                     lastBlank = false;
                 }
             }
-            lines = compacted;
-            if (lines.length === 0) lines = [''];
-            editor.innerHTML = '';
-            if (lines.length === 1 && lines[0] === '') {
-                // If text is empty, insert a single <br> for a truly empty editor
-                editor.appendChild(document.createElement('br'));
-            } else {
-                lines.forEach((line, idx) => {
-                    if (idx > 0) editor.appendChild(document.createElement('br'));
-                    if (line.length > 0) editor.appendChild(document.createTextNode(line));
-                });
-            }
-            // Force a line number update
-            const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
-                                (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
-            updateLineNumbers(editor.id, document.getElementById(lineNumbersId));
+            return compacted.join('\n');
         }
 
         function saveState() {
@@ -924,9 +930,9 @@
                 if (savedState) {
                     const parsed = JSON.parse(savedState);
 
-                    if (parsed.html) setEditorText(document.getElementById('html-editor'), parsed.html);
-                    if (parsed.css) setEditorText(document.getElementById('css-editor'), parsed.css);
-                    if (parsed.js) setEditorText(document.getElementById('js-editor'), parsed.js);
+                    if (parsed.html) setEditorText(document.getElementById('html-editor'), compactCode(parsed.html));
+                    if (parsed.css) setEditorText(document.getElementById('css-editor'), compactCode(parsed.css));
+                    if (parsed.js) setEditorText(document.getElementById('js-editor'), compactCode(parsed.js));
 
                     if (parsed.activeTab) {
                         const tab = document.querySelector(`.editor-tabs .tab[data-tab="${parsed.activeTab}"]`);
@@ -1161,9 +1167,9 @@ button:hover {
     transform: translateY(-2px);
 }`;
 
-                setEditorText(document.getElementById('html-editor'), defaultHtml);
-                setEditorText(document.getElementById('css-editor'), defaultCss);
-                setEditorText(document.getElementById('js-editor'), `function testFunction() {\n    console.log('Button clicked!');\n    console.warn('This is a warning message');\n    console.error('This is an error message');\n    console.info('This is an info message');\n    \n    // Try some calculations\n    const result = Math.random() * 100;\n    console.log('Random number:', result.toFixed(2));\n    \n    // Test object logging\n    const user = {\n        name: 'Alice',\n        age: 25,\n        hobbies: ['coding', 'reading', 'gaming'],\n        details: {\n            email: 'alice@example.com',\n            active: true\n        }\n    };\n    \n    console.log('User object:', user);\n    \n    // Test array logging\n    const numbers = [1, 2, 3, 4, 5];\n    console.log('Numbers array:', numbers);\n    \n    // Test error logging with proper error handling\n    try {\n        // This will throw an error\n        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string\n        console.log('Parsed JSON:', data);\n    } catch (error) {\n        console.error('Failed to parse JSON:', error.message);\n    }\n    \n    // Test promise with proper error handling\n    Promise.resolve('This is a resolved promise')\n        .then(result => console.log('Promise resolved:', result))\n        .catch(error => console.error('Promise rejected:', error.message));\n}`);
+                setEditorText(document.getElementById('html-editor'), compactCode(defaultHtml));
+                setEditorText(document.getElementById('css-editor'), compactCode(defaultCss));
+                setEditorText(document.getElementById('js-editor'), compactCode(`function testFunction() {\n    console.log('Button clicked!');\n    console.warn('This is a warning message');\n    console.error('This is an error message');\n    console.info('This is an info message');\n    \n    // Try some calculations\n    const result = Math.random() * 100;\n    console.log('Random number:', result.toFixed(2));\n    \n    // Test object logging\n    const user = {\n        name: 'Alice',\n        age: 25,\n        hobbies: ['coding', 'reading', 'gaming'],\n        details: {\n            email: 'alice@example.com',\n            active: true\n        }\n    };\n    \n    console.log('User object:', user);\n    \n    // Test array logging\n    const numbers = [1, 2, 3, 4, 5];\n    console.log('Numbers array:', numbers);\n    \n    // Test error logging with proper error handling\n    try {\n        // This will throw an error\n        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string\n        console.log('Parsed JSON:', data);\n    } catch (error) {\n        console.error('Failed to parse JSON:', error.message);\n    }\n    \n    // Test promise with proper error handling\n    Promise.resolve('This is a resolved promise')\n        .then(result => console.log('Promise resolved:', result))\n        .catch(error => console.error('Promise rejected:', error.message));\n`));
                 runCode();
                 saveState();
             }
