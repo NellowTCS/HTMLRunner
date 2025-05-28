@@ -1,0 +1,24 @@
+{
+  "name": "htmlrunner",
+  "version": "1.0.0",
+  "description": "A small live HTML/JS runner with console capture.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/codemirror": "^5.60.15",
+    "codemirror": "^5.65.7",
+    "fontawesome": "^5.6.3",
+    "prettier": "^3.5.3",
+    "split.js": "^1.6.5",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/prettier": "^2.7.3",
+    "@types/split.js": "^1.4.0"
+  }
+}
