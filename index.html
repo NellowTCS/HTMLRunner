@@ -197,7 +197,10 @@
             line-height: 1.5;
             padding: 10px;
             tab-size: 2;
-            white-space: pre;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            min-width: 0;
             background: transparent;
             color: #333;
             overflow: auto;
@@ -841,14 +844,60 @@
         }
 
         function getEditorText(editor) {
-            // Use textContent to preserve newlines exactly
-            return editor.textContent.replace(/\u200B/g, '');
+            // If editor is empty or only contains a single <br>, return empty string
+            if (!editor.textContent && editor.childNodes.length === 1 && editor.childNodes[0].nodeName === 'BR') {
+                return '';
+            }
+            let lines = [];
+            editor.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    lines.push(node.textContent.replace(/\u200B/g, ''));
+                } else if (node.nodeName === 'BR') {
+                    lines.push('');
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    lines.push(node.textContent.replace(/\u200B/g, ''));
+                }
+            });
+            // Remove trailing empty lines (from extra <br> at end)
+            while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+            // If the only line is empty, return ''
+            if (lines.length === 1 && lines[0] === '') return '';
+            return lines.join('\n');
         }
 
         function setEditorText(editor, text) {
-            // Use textContent to preserve newlines exactly
+            // Use <br> tags for newlines to preserve multi-line formatting
             const normalizedText = text.replace(/\r\n/g, '\n');
-            editor.textContent = normalizedText;
+            let lines = normalizedText.split('\n');
+            // Remove leading and trailing blank lines
+            while (lines.length > 0 && lines[0].trim() === '') lines.shift();
+            while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+            // Collapse multiple blank lines into a single blank line
+            let compacted = [];
+            let lastBlank = false;
+            for (let line of lines) {
+                if (line.trim() === '') {
+                    if (!lastBlank) {
+                        compacted.push('');
+                        lastBlank = true;
+                    }
+                } else {
+                    compacted.push(line);
+                    lastBlank = false;
+                }
+            }
+            lines = compacted;
+            if (lines.length === 0) lines = [''];
+            editor.innerHTML = '';
+            if (lines.length === 1 && lines[0] === '') {
+                // If text is empty, insert a single <br> for a truly empty editor
+                editor.appendChild(document.createElement('br'));
+            } else {
+                lines.forEach((line, idx) => {
+                    if (idx > 0) editor.appendChild(document.createElement('br'));
+                    if (line.length > 0) editor.appendChild(document.createTextNode(line));
+                });
+            }
             // Force a line number update
             const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
                                 (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
@@ -970,8 +1019,28 @@
                 const isFullHtml = /<html[\s>]|<!doctype html/i.test(html);
                 let docContent;
                 if (isFullHtml) {
+                    let injected = html;
                     // Inject console interceptor into <head> if possible
-                    docContent = html.replace(/(<head[^>]*>)/i, `$1\n<script>${consoleInterceptor}<\/script>`);
+                    injected = injected.replace(/(<head[^>]*>)/i, `$1\n<script>${consoleInterceptor}<\/script>`);
+                    // Inject CSS from tab if not empty
+                    if (css && css.trim()) {
+                        if (/<head[^>]*>/i.test(injected)) {
+                            if (/<style[\s>]/i.test(injected)) {
+                                injected = injected.replace(/(<style[\s\S]*?<\/style>)(?![\s\S]*<style[\s\S]*?<\/style>)/i, `$1\n<style>${css}</style>`);
+                            } else {
+                                injected = injected.replace(/(<head[^>]*>)/i, `$1\n<style>${css}</style>`);
+                            }
+                        }
+                    }
+                    // Inject JS from tab if not empty
+                    if (js && js.trim()) {
+                        if (/<\/body>/i.test(injected)) {
+                            injected = injected.replace(/(<\/body>)/i, `<script>${js}<\/script>$1`);
+                        } else {
+                            injected += `\n<script>${js}<\/script>`;
+                        }
+                    }
+                    docContent = injected;
                 } else {
                     // Use template as before
                     docContent = [
