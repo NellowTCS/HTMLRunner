@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,14 +7,15 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Highlight.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css"
-        id="hljs-light">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css"
-        id="hljs-dark" disabled>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css" id="hljs-light">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css" id="hljs-dark" disabled>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/css.min.js"></script>
+    <!-- JSZip and FileSaver for export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         // Suppress highlight.js security warnings
         window.hljs.configure({
@@ -31,14 +31,12 @@
             margin: 0;
             padding: 0;
         }
-
         .container {
             display: flex;
             flex-direction: column;
             height: 100vh;
             background: #f5f5f5;
         }
-
         .header {
             background: linear-gradient(90deg, #2196F3, #21CBF3);
             padding: 12px 20px;
@@ -48,7 +46,6 @@
             color: white;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
         .logo {
             font-size: 20px;
             font-weight: bold;
@@ -58,13 +55,11 @@
             -webkit-text-fill-color: transparent;
             display: inline-block;
         }
-
         .controls {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-
         .btn {
             padding: 8px 16px;
             border: none;
@@ -77,32 +72,30 @@
             align-items: center;
             gap: 6px;
         }
-
         .btn:active {
             transform: translateY(1px);
         }
-
         .btn-run {
             background-color: #2196F3;
             color: white;
         }
-
         .btn-clear {
             background-color: #f44336;
             color: white;
         }
-
         .btn-reset {
             background-color: #607D8B;
             color: white;
         }
-
+        .btn-export {
+            background-color: #4CAF50;
+            color: white;
+        }
         .btn:hover {
             opacity: 0.9;
             transform: none;
             box-shadow: none;
         }
-
         .main {
             flex: 1;
             display: flex;
@@ -112,7 +105,6 @@
             border-radius: 4px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
         .editor-panel {
             flex: 1;
             display: flex;
@@ -120,13 +112,11 @@
             background: white;
             border-right: 1px solid #e0e0e0;
         }
-
         .editor-tabs {
             display: flex;
             background: #f5f5f5;
             border-bottom: 1px solid #e0e0e0;
         }
-
         .tab {
             padding: 10px 20px;
             cursor: pointer;
@@ -134,31 +124,26 @@
             border-right: 1px solid #e0e0e0;
             transition: all 0.2s;
         }
-
         .tab.active {
             color: #2196F3;
             background: white;
             font-weight: 500;
         }
-
         .editor-container {
             position: relative;
             height: 100%;
             overflow: hidden;
             background: #fff;
         }
-
         .dark-mode .editor-container {
             background: #2d2d2d;
         }
-
         .editor-wrapper {
             position: relative;
             height: 100%;
             overflow: auto;
             padding-left: 50px;
         }
-
         .line-numbers {
             position: absolute;
             left: 0;
@@ -176,13 +161,11 @@
             line-height: 1.5;
             pointer-events: none;
         }
-
         .dark-mode .line-numbers {
             background: #252526;
             color: #858585;
             border-right-color: #444;
         }
-
         .editor {
             position: relative;
             width: 100%;
@@ -195,7 +178,6 @@
             font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
             font-size: 14px;
             line-height: 1.5;
-            padding: 10px;
             tab-size: 2;
             white-space: pre-wrap;
             word-break: break-word;
@@ -205,40 +187,36 @@
             color: #333;
             overflow: auto;
         }
-
         .dark-mode .editor {
             color: #e0e0e0;
             background: #1e1e1e;
         }
-
         .active-line {
             background: rgba(33, 150, 243, 0.1);
         }
-
         .bracket-match {
             background: rgba(33, 150, 243, 0.3);
             border-radius: 2px;
         }
-
+        .error-line {
+            background: rgba(255, 0, 0, 0.2);
+        }
         .output-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
             background: white;
         }
-
         .output-tabs {
             display: flex;
             background: #f5f5f5;
             border-bottom: 1px solid #e0e0e0;
         }
-
         .output-content {
             flex: 1;
             overflow: auto;
             background: white;
         }
-
         .preview {
             height: 100%;
             width: 100%;
@@ -246,11 +224,9 @@
             background: white;
             display: none;
         }
-
         .preview.active {
             display: block;
         }
-
         .console {
             height: 100%;
             padding: 15px;
@@ -261,22 +237,18 @@
             color: #212121;
             display: none;
         }
-
         .console.active {
             display: block;
         }
-
         .console-entry {
             margin-bottom: 8px;
             padding: 4px 0;
             font-family: 'Courier New', monospace;
             font-size: 13px;
         }
-
         .console-log {
             color: #212121;
         }
-
         .console-error {
             color: #d32f2f;
             background: #ffebee;
@@ -287,7 +259,6 @@
             word-wrap: break-word;
             display: block;
         }
-
         .console-warn {
             color: #f57c00;
             background: #fff3e0;
@@ -298,17 +269,14 @@
             word-wrap: break-word;
             display: block;
         }
-
         .console-info {
             color: #0288d1;
         }
-
         .timestamp {
             color: #757575;
             font-size: 11px;
             margin-right: 8px;
         }
-
         .loading {
             position: fixed;
             top: 0;
@@ -324,12 +292,10 @@
             pointer-events: none;
             transition: opacity 0.3s;
         }
-
         .loading.active {
             opacity: 1;
             pointer-events: all;
         }
-
         .spinner {
             border: 4px solid rgba(33, 150, 243, 0.2);
             border-radius: 50%;
@@ -338,84 +304,63 @@
             height: 40px;
             animation: spin 1s linear infinite;
         }
-
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-
         .console-object {
             cursor: pointer;
             color: #795548;
             font-style: italic;
         }
-
         .console-object:before {
             content: '▶ ';
             font-size: 10px;
             display: inline-block;
             transition: transform 0.2s;
         }
-
         .console-object.expanded:before {
             transform: rotate(90deg);
         }
-
         .console-object-content {
             display: none;
             margin-left: 20px;
             border-left: 1px solid #e0e0e0;
             padding-left: 10px;
         }
-
         .console-object.expanded+.console-object-content {
             display: block;
         }
-
         @media (max-width: 768px) {
             .main {
                 flex-direction: column;
             }
-
-            .editor-panel,
-            .output-panel {
+            .editor-panel, .output-panel {
                 width: 100%;
                 height: 50%;
             }
-
-            .editor-tabs,
-            .output-tabs {
+            .editor-tabs, .output-tabs {
                 overflow-x: auto;
                 white-space: nowrap;
             }
-
             .tab {
                 padding: 10px 15px;
                 font-size: 0.9em;
             }
         }
-
         @media (max-width: 480px) {
             .controls {
                 flex-wrap: wrap;
                 justify-content: flex-end;
             }
-
             .btn {
                 padding: 6px 10px;
                 font-size: 0.8em;
             }
-
             .logo {
                 font-size: 1em;
             }
         }
-
         .error-message {
             background: #ffebee;
             color: #d32f2f;
@@ -425,29 +370,22 @@
             border-left: 4px solid #d32f2f;
             display: none;
         }
-
-        /* Dark mode styles */
         body.dark-mode {
             background-color: #1a1a1a;
             color: #e0e0e0;
         }
-
-        /* Dark mode gradient */
         .dark-mode .header {
             background: linear-gradient(135deg, #181d21 0%, #1b2e35 100%);
         }
-
         .dark-mode .logo {
             background: linear-gradient(135deg, #64b5f6, #80d8ff);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-
         .dark-mode .container {
             background: #1a1a1a;
         }
-
         .dark-mode .main,
         .dark-mode .editor-panel,
         .dark-mode .output-panel,
@@ -457,54 +395,42 @@
             background-color: #2d2d2d;
             color: #e0e0e0;
         }
-
         .dark-mode .editor-tabs,
         .dark-mode .output-tabs {
             background: #333;
             border-bottom-color: #444;
         }
-
         .dark-mode .tab {
             color: #aaa;
             border-right-color: #444;
         }
-
         .dark-mode .tab.active {
             background: linear-gradient(135deg, #1e262c 0%, #23363e 100%);
             color: #fff;
         }
-
         .dark-mode .console {
             color: #e0e0e0;
         }
-
         .dark-mode .console-error {
             background: #3e2723;
             border-left-color: #d32f2f;
         }
-
         .dark-mode .console-warn {
             background: #3e2c00;
             border-left-color: #ff9800;
         }
-
         .dark-mode .console-info {
             color: #4fc3f7;
         }
-
         .dark-mode .console-object {
             color: #9cdcfe;
         }
-
         .dark-mode .console-object-content {
             border-left-color: #444;
         }
-
         .dark-mode .timestamp {
             color: #888;
         }
-
-        /* Theme toggle button */
         .theme-toggle {
             background: none;
             border: 2px solid #1A5E97;
@@ -517,51 +443,38 @@
             gap: 6px;
             transition: all 0.3s ease;
         }
-
         .dark-mode .theme-toggle {
             border-color: #64b5f6;
             color: #64b5f6;
         }
-
         .theme-toggle:hover {
             background: rgba(33, 150, 243, 0.1);
         }
-
         .dark-mode .theme-toggle:hover {
             background: rgba(100, 181, 246, 0.1);
         }
-
         .theme-toggle i {
             font-size: 16px;
         }
-
-        /* Dark mode styles for console text */
         .dark-mode .console-log {
             color: #9cdcfe;
         }
-
         .dark-mode .console-warn {
             color: #dcdcaa;
         }
-
         .dark-mode .console-error {
             color: #f48771;
         }
-
         .dark-mode .console-info {
             color: #4fc3f7;
         }
-
         .dark-mode .console-debug {
             color: #c586c0;
         }
-
-        /* Highlight.js overrides for dark mode */
         .dark-mode .hljs {
             background: #2d2d2d;
             color: #e0e0e0;
         }
-
         .dark-mode .hljs-keyword,
         .dark-mode .hljs-selector-tag,
         .dark-mode .hljs-literal,
@@ -569,7 +482,6 @@
         .dark-mode .hljs-link {
             color: #569cd6;
         }
-
         .dark-mode .hljs-string,
         .dark-mode .hljs-title,
         .dark-mode .hljs-name,
@@ -582,14 +494,12 @@
         .dark-mode .hljs-template-variable {
             color: #ce9178;
         }
-
         .dark-mode .hljs-comment,
         .dark-mode .hljs-quote,
         .dark-mode .hljs-deletion,
         .dark-mode .hljs-meta {
             color: #6a9955;
         }
-
         .dark-mode .hljs-keyword,
         .dark-mode .hljs-selector-tag,
         .dark-mode .hljs-literal,
@@ -600,79 +510,64 @@
         .dark-mode .hljs-selector-id {
             font-weight: bold;
         }
-
-        /* Make sure the theme toggle works with highlight.js */
         .dark-mode #hljs-light {
             display: none;
         }
-
         .dark-mode #hljs-dark {
             display: block;
         }
-
         #hljs-dark {
             display: none;
         }
     </style>
 </head>
-
 <body>
     <div class="loading" id="loading">
         <div class="spinner"></div>
     </div>
-
     <div class="error-message" id="error-message"></div>
-
     <div class="container">
         <div class="header">
             <div class="logo">HTMLRunner</div>
             <div class="controls">
-                <button class="btn btn-run" onclick="runCode()">▶ Run</button>
-                <button class="btn btn-clear" onclick="clearConsole()">Clear Console</button>
-                <button class="btn btn-reset" onclick="resetCode()">Reset</button>
-                <button class="theme-toggle" onclick="toggleDarkMode()">
-                    <i class="fas fa-moon"></i>
-                    <span>Dark Mode</span>
-                </button>
+                <button class="btn btn-run" onclick="runCode()" aria-label="Run code"><i class="fas fa-play"></i> Run</button>
+                <button class="btn btn-clear" onclick="clearConsole()" aria-label="Clear console output"><i class="fas fa-eraser"></i> Clear Console</button>
+                <button class="btn btn-reset" onclick="resetCode()" aria-label="Reset code to default"><i class="fas fa-undo"></i> Reset</button>
+                <button class="btn btn-export" onclick="exportCode()" aria-label="Export code as zip file"><i class="fas fa-download"></i> Export</button>
+                <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode"><i class="fas fa-moon"></i> <span>Dark Mode</span></button>
             </div>
         </div>
-
         <div class="main">
             <div class="editor-panel">
                 <div class="editor-tabs">
-                    <div class="tab active" data-tab="html" onclick="switchTab('html')">HTML</div>
-                    <div class="tab" data-tab="css" onclick="switchTab('css')">CSS</div>
-                    <div class="tab" data-tab="js" onclick="switchTab('js')">JavaScript</div>
+                    <div class="tab active" data-tab="html" onclick="switchTab('html')" tabindex="0" role="tab" aria-selected="true">HTML</div>
+                    <div class="tab" data-tab="css" onclick="switchTab('css')" tabindex="0" role="tab" aria-selected="false">CSS</div>
+                    <div class="tab" data-tab="js" onclick="switchTab('js')" tabindex="0" role="tab" aria-selected="false">JavaScript</div>
                 </div>
-
                 <div class="editor-container">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="line-numbers"></div>
-                        <pre id="html-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
+                        <pre id="html-editor" class="editor" contenteditable="true" spellcheck="false"><code class="language-html"></code></pre>
                     </div>
                 </div>
-
                 <div class="editor-container" style="display: none;">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="css-line-numbers"></div>
-                        <pre id="css-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
+                        <pre id="css-editor" class="editor" contenteditable="true" spellcheck="false"><code class="language-css"></code></pre>
                     </div>
                 </div>
-
                 <div class="editor-container" style="display: none;">
                     <div class="editor-wrapper">
                         <div class="line-numbers" id="js-line-numbers"></div>
-                        <pre id="js-editor" class="editor" contenteditable="true" spellcheck="false"></pre>
+                        <pre id="js-editor" class="editor" contenteditable="true" spellcheck="false"><code class="language-javascript"></code></pre>
                     </div>
                 </div>
             </div>
-
             <div class="output-panel">
                 <div class="output-tabs">
-                    <div class="tab active" data-output="preview" onclick="switchOutput('preview')">Preview</div>
-                    <div class="tab" data-output="console" onclick="switchOutput('console')">Console</div>
+                    <div class="tab active" data-output="preview" onclick="switchOutput('preview')" tabindex="0" role="tab" aria-selected="true">Preview</div>
+                    <div class="tab" data-output="console" onclick="switchOutput('console')" tabindex="0" role="tab" aria-selected="false">Console</div>
                 </div>
-
                 <div class="output-content">
                     <iframe id="preview" class="preview active"></iframe>
                     <div id="console" class="console"></div>
@@ -680,13 +575,11 @@
             </div>
         </div>
     </div>
-
     <script>
         let currentTab = 'html';
         let currentOutput = 'preview';
         let consoleOutput = document.getElementById('console');
         let isDarkMode = false;
-
         const state = {
             html: '',
             css: '',
@@ -694,46 +587,34 @@
             activeTab: 'html',
             activeOutput: 'preview'
         };
-
         const loadingEl = document.getElementById('loading');
         const errorEl = document.getElementById('error-message');
-
         document.addEventListener('DOMContentLoaded', function () {
             loadState();
             runCode();
-            // Only call initializeEditors once
             initializeEditors();
             document.querySelectorAll('.editor').forEach(editor => {
                 editor.addEventListener('input', debounce(saveState, 500));
             });
-
-            // Load dark mode preference
             isDarkMode = localStorage.getItem('darkMode') === 'true';
             if (isDarkMode) {
                 document.body.classList.add('dark-mode');
                 updateThemeIcon();
             }
-
-            // Initialize highlight.js
             hljs.highlightAll();
         });
-
         window.addEventListener('message', function (event) {
             if (event.data.type === 'console') {
                 const entry = document.createElement('div');
                 entry.className = 'console-entry';
-
                 const timestamp = document.createElement('span');
                 timestamp.className = 'timestamp';
                 timestamp.textContent = new Date().toLocaleTimeString();
-
                 const message = document.createElement('span');
                 message.className = `console-${event.data.level}`;
-
                 if (event.data.data && event.data.data.length > 0) {
                     event.data.data.forEach((item, i) => {
                         if (i > 0) message.appendChild(document.createTextNode(' '));
-
                         if (item && typeof item === 'object') {
                             message.appendChild(renderObject(item));
                         } else {
@@ -742,7 +623,6 @@
                         }
                     });
                 }
-
                 entry.appendChild(timestamp);
                 entry.appendChild(document.createTextNode(' '));
                 entry.appendChild(message);
@@ -750,22 +630,17 @@
                 consoleOutput.scrollTop = consoleOutput.scrollHeight;
             }
         });
-
         function renderObject(obj, level = 0) {
             if (obj === null) {
                 return document.createTextNode('null');
             }
-
             if (typeof obj !== 'object') {
                 return document.createTextNode(String(obj));
             }
-
             if (Array.isArray(obj)) {
                 return renderArray(obj, level);
             }
-
             const container = document.createElement('span');
-
             if (obj instanceof Error) {
                 const errorEl = document.createElement('span');
                 errorEl.className = 'console-error';
@@ -776,18 +651,14 @@
                 container.appendChild(errorEl);
                 return container;
             }
-
             const preview = document.createElement('span');
             preview.className = 'console-object';
             preview.textContent = Array.isArray(obj) ? `Array(${obj.length})` : '{...}';
-
             const content = document.createElement('div');
             content.className = 'console-object-content';
-
             Object.entries(obj).forEach(([key, value]) => {
                 const prop = document.createElement('div');
                 prop.textContent = `${key}: `;
-
                 if (value && typeof value === 'object') {
                     prop.appendChild(renderObject(value, level + 1));
                 } else {
@@ -795,33 +666,26 @@
                         typeof value === 'string' ? `"${value}"` : String(value)
                     ));
                 }
-
                 content.appendChild(prop);
             });
-
             preview.addEventListener('click', (e) => {
                 e.stopPropagation();
                 preview.classList.toggle('expanded');
             });
-
             container.appendChild(preview);
             container.appendChild(content);
             return container;
         }
-
         function renderArray(arr, level) {
             const container = document.createElement('span');
             const preview = document.createElement('span');
             preview.className = 'console-object';
             preview.textContent = `Array(${arr.length})`;
-
             const content = document.createElement('div');
             content.className = 'console-object-content';
-
             arr.forEach((item, i) => {
                 const el = document.createElement('div');
                 el.textContent = `${i}: `;
-
                 if (item && typeof item === 'object') {
                     el.appendChild(renderObject(item, level + 1));
                 } else {
@@ -829,27 +693,23 @@
                         typeof item === 'string' ? `"${item}"` : String(item)
                     ));
                 }
-
                 content.appendChild(el);
             });
-
             preview.addEventListener('click', (e) => {
                 e.stopPropagation();
                 preview.classList.toggle('expanded');
             });
-
             container.appendChild(preview);
             container.appendChild(content);
             return container;
         }
-
         function getEditorText(editor) {
-            // If editor is empty or only contains a single <br>, return empty string
-            if (!editor.textContent && editor.childNodes.length === 1 && editor.childNodes[0].nodeName === 'BR') {
+            const code = editor.querySelector('code');
+            if (!code.textContent && code.childNodes.length <= 1 && code.childNodes[0]?.nodeName === 'BR') {
                 return '';
             }
             let lines = [];
-            editor.childNodes.forEach(node => {
+            code.childNodes.forEach(node => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     lines.push(node.textContent.replace(/\u200B/g, ''));
                 } else if (node.nodeName === 'BR') {
@@ -858,42 +718,32 @@
                     lines.push(node.textContent.replace(/\u200B/g, ''));
                 }
             });
-            // Do NOT remove blank lines here; preserve all lines for editing
-            // Remove trailing empty lines (from extra <br> at end)
             while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
-            // If the only line is empty, return ''
             if (lines.length === 1 && lines[0] === '') return '';
             return lines.join('\n');
         }
-
         function setEditorText(editor, text) {
-            // Use <br> tags for newlines to preserve multi-line formatting
+            const code = editor.querySelector('code');
             const normalizedText = text.replace(/\r\n/g, '\n');
             let lines = normalizedText.split('\n');
-            // Do NOT remove blank lines here; preserve all lines for editing
-            editor.innerHTML = '';
+            code.innerHTML = '';
             if (lines.length === 1 && lines[0] === '') {
-                // If text is empty, insert a single <br> for a truly empty editor
-                editor.appendChild(document.createElement('br'));
+                code.appendChild(document.createElement('br'));
             } else {
                 lines.forEach((line, idx) => {
-                    if (idx > 0) editor.appendChild(document.createElement('br'));
-                    if (line.length > 0) editor.appendChild(document.createTextNode(line));
+                    if (idx > 0) code.appendChild(document.createElement('br'));
+                    if (line.length > 0) code.appendChild(document.createTextNode(line));
                 });
             }
-            // Force a line number update
+            hljs.highlightElement(code);
             const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
-                                (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
+                                 (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
             updateLineNumbers(editor.id, document.getElementById(lineNumbersId));
         }
-
-        // Helper to compact code (remove leading/trailing blank lines and collapse multiple blank lines)
         function compactCode(text) {
             let lines = text.replace(/\r\n/g, '\n').split('\n');
-            // Remove leading and trailing blank lines
             while (lines.length > 0 && lines[0].trim() === '') lines.shift();
             while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
-            // Collapse multiple blank lines into a single blank line
             let compacted = [];
             let lastBlank = false;
             for (let line of lines) {
@@ -909,57 +759,46 @@
             }
             return compacted.join('\n');
         }
-
         function saveState() {
             state.html = getEditorText(document.getElementById('html-editor'));
             state.css = getEditorText(document.getElementById('css-editor'));
             state.js = getEditorText(document.getElementById('js-editor'));
             state.activeTab = document.querySelector('.editor-tabs .tab.active').dataset.tab;
             state.activeOutput = document.querySelector('.output-tabs .tab.active').dataset.output;
-
             try {
                 localStorage.setItem('htmlRunnerState', JSON.stringify(state));
             } catch (e) {
                 showError('Failed to save state: ' + e.message);
             }
         }
-
         function loadState() {
             try {
                 const savedState = localStorage.getItem('htmlRunnerState');
                 if (savedState) {
                     const parsed = JSON.parse(savedState);
-
                     if (parsed.html) setEditorText(document.getElementById('html-editor'), compactCode(parsed.html));
                     if (parsed.css) setEditorText(document.getElementById('css-editor'), compactCode(parsed.css));
                     if (parsed.js) setEditorText(document.getElementById('js-editor'), compactCode(parsed.js));
-
                     if (parsed.activeTab) {
                         const tab = document.querySelector(`.editor-tabs .tab[data-tab="${parsed.activeTab}"]`);
                         if (tab) tab.click();
                     }
-
                     if (parsed.activeOutput) {
                         const output = document.querySelector(`.output-tabs .tab[data-output="${parsed.activeOutput}"]`);
                         if (output) output.click();
                     }
-
-                    // Update line numbers and highlighting after loading state
                     initializeEditors();
                 }
             } catch (e) {
                 showError('Failed to load saved state: ' + e.message);
             }
         }
-
         function showLoading() {
             loadingEl.classList.add('active');
         }
-
         function hideLoading() {
             loadingEl.classList.remove('active');
         }
-
         function showError(message) {
             errorEl.textContent = message;
             errorEl.style.display = 'block';
@@ -967,7 +806,6 @@
                 errorEl.style.display = 'none';
             }, 5000);
         }
-
         function debounce(func, wait) {
             let timeout;
             return function () {
@@ -977,17 +815,22 @@
                 timeout = setTimeout(() => func.apply(context, args), wait);
             };
         }
-
+        function exportCode() {
+            const zip = new JSZip();
+            zip.file('index.html', getEditorText(document.getElementById('html-editor')));
+            zip.file('styles.css', getEditorText(document.getElementById('css-editor')));
+            zip.file('script.js', getEditorText(document.getElementById('js-editor')));
+            zip.generateAsync({ type: 'blob' }).then(blob => {
+                saveAs(blob, 'htmlrunner-project.zip');
+            });
+        }
         function runCode() {
             showLoading();
             clearConsole();
-
             try {
                 const html = getEditorText(document.getElementById('html-editor'));
                 const css = getEditorText(document.getElementById('css-editor'));
                 const js = getEditorText(document.getElementById('js-editor'));
-
-                // Pre-parse JS to catch syntax errors before running in iframe
                 try {
                     if (js.trim()) {
                         new Function(js);
@@ -1006,10 +849,21 @@
                     entry.appendChild(message);
                     consoleOutput.appendChild(entry);
                     consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                    if (syntaxError.stack) {
+                        const match = syntaxError.stack.match(/<anonymous>:(\d+):(\d+)/);
+                        if (match) {
+                            const lineNum = parseInt(match[1]) - 1;
+                            const editor = document.getElementById('js-editor');
+                            const lines = editor.querySelector('code').childNodes;
+                            if (lines[lineNum]) {
+                                lines[lineNum].classList.add('error-line');
+                                setTimeout(() => lines[lineNum].classList.remove('error-line'), 3000);
+                            }
+                        }
+                    }
                     hideLoading();
                     return;
                 }
-
                 let preview = document.getElementById('preview');
                 const newFrame = document.createElement('iframe');
                 newFrame.id = 'preview';
@@ -1017,18 +871,12 @@
                 newFrame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-modals allow-popups allow-forms');
                 preview.parentNode.replaceChild(newFrame, preview);
                 preview = newFrame;
-
-                // Console interceptor script
                 const consoleInterceptor = `\nconst originalConsole = {\n    log: console.log,\n    error: console.error,\n    warn: console.warn,\n    info: console.info\n};\nfunction sendToConsole(level, ...args) {\n    window.parent.postMessage({\n        type: 'console',\n        level: level,\n        data: args,\n        timestamp: new Date().toISOString()\n    }, '*');\n    originalConsole[level].apply(console, args);\n}\nconsole.log = (...args) => sendToConsole('log', ...args);\nconsole.error = (...args) => sendToConsole('error', ...args);\nconsole.warn = (...args) => sendToConsole('warn', ...args);\nconsole.info = (...args) => sendToConsole('info', ...args);\nwindow.onerror = function(message, source, lineno, colno, error) {\n    sendToConsole('error', error || message);\n    return true;\n};\nwindow.onunhandledrejection = function(event) {\n    sendToConsole('error', event.reason);\n};\n`;
-
-                // Detect if user HTML is a full HTML document
                 const isFullHtml = /<html[\s>]|<!doctype html/i.test(html);
                 let docContent;
                 if (isFullHtml) {
                     let injected = html;
-                    // Inject console interceptor into <head> if possible
                     injected = injected.replace(/(<head[^>]*>)/i, `$1\n<script>${consoleInterceptor}<\/script>`);
-                    // Inject CSS from tab if not empty
                     if (css && css.trim()) {
                         if (/<head[^>]*>/i.test(injected)) {
                             if (/<style[\s>]/i.test(injected)) {
@@ -1038,7 +886,6 @@
                             }
                         }
                     }
-                    // Inject JS from tab if not empty
                     if (js && js.trim()) {
                         if (/<\/body>/i.test(injected)) {
                             injected = injected.replace(/(<\/body>)/i, `<script>${js}<\/script>$1`);
@@ -1048,7 +895,6 @@
                     }
                     docContent = injected;
                 } else {
-                    // Use template as before
                     docContent = [
                         '<!DOCTYPE html><html><head><meta charset="UTF-8">',
                         '<style>', css, '</style>',
@@ -1057,24 +903,16 @@
                         '<script>', js, '<\/script></html>'
                     ].join('');
                 }
-
                 const blob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 preview.src = url;
-
                 if (document.querySelector('.output-tabs .tab[data-output="preview"]')) {
                     document.querySelector('.output-tabs .tab[data-output="preview"]').click();
                 }
-
                 preview.addEventListener('load', function cleanup() {
                     URL.revokeObjectURL(url);
                     preview.removeEventListener('load', cleanup);
                 });
-
-                if (document.querySelector('.output-tabs .tab[data-output="preview"]')) {
-                    document.querySelector('.output-tabs .tab[data-output="preview"]').click();
-                }
-
                 saveState();
             } catch (error) {
                 showError(`Error running code: ${error.message}`);
@@ -1083,11 +921,8 @@
                 hideLoading();
             }
         }
-
         function switchTab(tab) {
-            // Hide all editor containers
             document.querySelectorAll('.editor-container').forEach(c => c.style.display = 'none');
-            // Show the correct editor container
             if (tab === 'html') {
                 document.querySelectorAll('.editor-container')[0].style.display = 'block';
             } else if (tab === 'css') {
@@ -1095,19 +930,23 @@
             } else if (tab === 'js') {
                 document.querySelectorAll('.editor-container')[2].style.display = 'block';
             }
-            document.querySelectorAll('.editor-tabs .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.editor-tabs .tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
             const tabEl = document.querySelector(`.editor-tabs .tab[data-tab="${tab}"]`);
-            if (tabEl) tabEl.classList.add('active');
-            // Update line numbers for the active editor
+            if (tabEl) {
+                tabEl.classList.add('active');
+                tabEl.setAttribute('aria-selected', 'true');
+            }
             const lineId = tab === 'html' ? 'line-numbers' : (tab === 'css' ? 'css-line-numbers' : 'js-line-numbers');
             updateLineNumbers(tab + '-editor', document.getElementById(lineId));
-            // Focus the editor and move caret to end
             setTimeout(() => {
                 const editor = document.getElementById(tab + '-editor');
                 editor.focus();
                 if (document.createRange && window.getSelection) {
                     const range = document.createRange();
-                    range.selectNodeContents(editor);
+                    range.selectNodeContents(editor.querySelector('code'));
                     range.collapse(false);
                     const sel = window.getSelection();
                     sel.removeAllRanges();
@@ -1116,21 +955,24 @@
             }, 0);
             saveState();
         }
-
         function switchOutput(output) {
             document.getElementById('preview').classList.remove('active');
             document.getElementById('console').classList.remove('active');
             document.getElementById(output).classList.add('active');
-            document.querySelectorAll('.output-tabs .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.output-tabs .tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
             const tabEl = document.querySelector(`.output-tabs .tab[data-output="${output}"]`);
-            if (tabEl) tabEl.classList.add('active');
+            if (tabEl) {
+                tabEl.classList.add('active');
+                tabEl.setAttribute('aria-selected', 'true');
+            }
             saveState();
         }
-
         function clearConsole() {
             consoleOutput.innerHTML = '';
         }
-
         function resetCode() {
             if (confirm('Are you sure you want to reset all code to default?')) {
                 const defaultHtml = `<!DOCTYPE html>
@@ -1144,13 +986,11 @@
     <button onclick="testFunction()">Click me!</button>
 </body>
 </html>`;
-
                 const defaultCss = `body {
     font-family: Arial, sans-serif;
     margin: 20px;
     line-height: 1.6;
 }
-
 button {
     background: #2196F3;
     color: white;
@@ -1161,20 +1001,45 @@ button {
     font-size: 16px;
     transition: background 0.3s, transform 0.2s;
 }
-
 button:hover {
     background: #1976D2;
     transform: translateY(-2px);
 }`;
-
                 setEditorText(document.getElementById('html-editor'), compactCode(defaultHtml));
                 setEditorText(document.getElementById('css-editor'), compactCode(defaultCss));
-                setEditorText(document.getElementById('js-editor'), compactCode(`function testFunction() {\n    console.log('Button clicked!');\n    console.warn('This is a warning message');\n    console.error('This is an error message');\n    console.info('This is an info message');\n    \n    // Try some calculations\n    const result = Math.random() * 100;\n    console.log('Random number:', result.toFixed(2));\n    \n    // Test object logging\n    const user = {\n        name: 'Alice',\n        age: 25,\n        hobbies: ['coding', 'reading', 'gaming'],\n        details: {\n            email: 'alice@example.com',\n            active: true\n        }\n    };\n    \n    console.log('User object:', user);\n    \n    // Test array logging\n    const numbers = [1, 2, 3, 4, 5];\n    console.log('Numbers array:', numbers);\n    \n    // Test error logging with proper error handling\n    try {\n        // This will throw an error\n        const data = JSON.parse('{"invalid": "json"}'); // Fixed JSON string\n        console.log('Parsed JSON:', data);\n    } catch (error) {\n        console.error('Failed to parse JSON:', error.message);\n    }\n    \n    // Test promise with proper error handling\n    Promise.resolve('This is a resolved promise')\n        .then(result => console.log('Promise resolved:', result))\n        .catch(error => console.error('Promise rejected:', error.message));\n`));
+                setEditorText(document.getElementById('js-editor'), compactCode(`function testFunction() {
+    console.log('Button clicked!');
+    console.warn('This is a warning message');
+    console.error('This is an error message');
+    console.info('This is an info message');
+    const result = Math.random() * 100;
+    console.log('Random number:', result.toFixed(2));
+    const user = {
+        name: 'Alice',
+        age: 25,
+        hobbies: ['coding', 'reading', 'gaming'],
+        details: {
+            email: 'alice@example.com',
+            active: true
+        }
+    };
+    console.log('User object:', user);
+    const numbers = [1, 2, 3, 4, 5];
+    console.log('Numbers array:', numbers);
+    try {
+        const data = JSON.parse('{"valid": "json"}');
+        console.log('Parsed JSON:', data);
+    } catch (error) {
+        console.error('Failed to parse JSON:', error.message);
+    }
+    Promise.resolve('This is a resolved promise')
+        .then(result => console.log('Promise resolved:', result))
+        .catch(error => console.error('Promise rejected:', error.message));
+}`));
                 runCode();
                 saveState();
             }
         }
-
         function toggleDarkMode() {
             isDarkMode = !isDarkMode;
             document.body.classList.toggle('dark-mode');
@@ -1182,20 +1047,11 @@ button:hover {
             updateThemeIcon();
             updateCodeHighlighting();
         }
-
         function updateCodeHighlighting() {
-            // Remove old highlighting
-            document.querySelectorAll('.hljs').forEach(el => {
-                el.classList.remove('hljs');
-                el.removeAttribute('style');
-            });
-
-            // Apply new highlighting
-            document.querySelectorAll('pre code').forEach((block) => {
+            document.querySelectorAll('.editor code').forEach((block) => {
                 hljs.highlightElement(block);
             });
         }
-
         function updateThemeIcon() {
             const icon = document.querySelector('.theme-toggle i');
             if (isDarkMode) {
@@ -1208,10 +1064,9 @@ button:hover {
                 document.querySelector('.theme-toggle span').textContent = 'Dark Mode';
             }
         }
-
         function updateLineNumbers(editorId, lineNumbersElement) {
             const editor = document.getElementById(editorId);
-            if (!editor) return; // Prevent error if editor is not found
+            if (!editor) return;
             let lines = getEditorText(editor).split('\n');
             if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) lines = [''];
             let html = '';
@@ -1221,7 +1076,6 @@ button:hover {
             lineNumbersElement.innerHTML = html;
             lineNumbersElement.scrollTop = editor.scrollTop;
         }
-
         function initializeEditors() {
             const editors = [
                 { id: 'html-editor', lineId: 'line-numbers' },
@@ -1236,6 +1090,8 @@ button:hover {
                 editor.addEventListener('input', () => {
                     update();
                     saveState();
+                    const code = editor.querySelector('code');
+                    hljs.highlightElement(code);
                 });
                 editor.addEventListener('paste', () => {
                     setTimeout(update, 0);
@@ -1243,28 +1099,22 @@ button:hover {
                 editor.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        
-                        // Get current selection
                         const selection = window.getSelection();
                         const range = selection.getRangeAt(0);
-                        
-                        // Get the content before cursor in the current line
                         let currentLine = '';
                         let node = range.startContainer;
                         let offset = range.startOffset;
-                        
                         if (node.nodeType === Node.TEXT_NODE) {
                             currentLine = node.textContent.substring(0, offset);
+                        } else if (node.nodeName === 'CODE') {
+                            currentLine = node.textContent.substring(0, offset);
                         }
-                        
-                        // Get indentation of the current line
                         const match = currentLine.match(/^\s+/);
-                        const indentation = match ? match[0] : '';
-                        
-                        // Insert a single newline with indentation
+                        let indentation = match ? match[0] : '';
+                        if ((editor.id === 'js-editor' || editor.id === 'css-editor') && currentLine.trim().endsWith('{')) {
+                            indentation += '  ';
+                        }
                         document.execCommand('insertText', false, '\n' + indentation);
-                        
-                        // Update line numbers once
                         update();
                     } else if (e.key === 'Tab') {
                         e.preventDefault();
@@ -1277,8 +1127,15 @@ button:hover {
                     lineNumbers.scrollTop = editor.scrollTop;
                 });
             });
+            document.querySelectorAll('.editor-tabs .tab, .output-tabs .tab').forEach(tab => {
+                tab.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        tab.click();
+                    }
+                });
+            });
         }
     </script>
 </body>
-
 </html>
