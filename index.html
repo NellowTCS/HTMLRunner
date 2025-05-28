@@ -841,15 +841,14 @@
         }
 
         function getEditorText(editor) {
-            // Remove zero-width spaces and preserve newlines
-            return editor.innerText.replace(/\u200B/g, '');
+            // Use textContent to preserve newlines exactly
+            return editor.textContent.replace(/\u200B/g, '');
         }
 
         function setEditorText(editor, text) {
-            // Preserve newlines when setting text and ensure consistent line endings
+            // Use textContent to preserve newlines exactly
             const normalizedText = text.replace(/\r\n/g, '\n');
-            editor.innerText = normalizedText;
-            
+            editor.textContent = normalizedText;
             // Force a line number update
             const lineNumbersId = editor.id === 'html-editor' ? 'line-numbers' :
                                 (editor.id === 'css-editor' ? 'css-line-numbers' : 'js-line-numbers');
@@ -932,6 +931,31 @@
                 const html = getEditorText(document.getElementById('html-editor'));
                 const css = getEditorText(document.getElementById('css-editor'));
                 const js = getEditorText(document.getElementById('js-editor'));
+
+                // Pre-parse JS to catch syntax errors before running in iframe
+                try {
+                    // Only check if JS is not empty
+                    if (js.trim()) {
+                        new Function(js);
+                    }
+                } catch (syntaxError) {
+                    // Show syntax error in the console output
+                    const entry = document.createElement('div');
+                    entry.className = 'console-entry';
+                    const timestamp = document.createElement('span');
+                    timestamp.className = 'timestamp';
+                    timestamp.textContent = new Date().toLocaleTimeString();
+                    const message = document.createElement('span');
+                    message.className = 'console-error';
+                    message.textContent = `SyntaxError: ${syntaxError.message}`;
+                    entry.appendChild(timestamp);
+                    entry.appendChild(document.createTextNode(' '));
+                    entry.appendChild(message);
+                    consoleOutput.appendChild(entry);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                    hideLoading();
+                    return;
+                }
 
                 // Get or create iframe
                 let preview = document.getElementById('preview');
@@ -1147,6 +1171,7 @@ button:hover {
 
         function updateLineNumbers(editorId, lineNumbersElement) {
             const editor = document.getElementById(editorId);
+            if (!editor) return; // Prevent error if editor is not found
             let lines = getEditorText(editor).split('\n');
             if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) lines = [''];
             let html = '';
