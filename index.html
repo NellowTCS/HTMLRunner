@@ -934,12 +934,10 @@
 
                 // Pre-parse JS to catch syntax errors before running in iframe
                 try {
-                    // Only check if JS is not empty
                     if (js.trim()) {
                         new Function(js);
                     }
                 } catch (syntaxError) {
-                    // Show syntax error in the console output
                     const entry = document.createElement('div');
                     entry.className = 'console-entry';
                     const timestamp = document.createElement('span');
@@ -957,10 +955,7 @@
                     return;
                 }
 
-                // Get or create iframe
                 let preview = document.getElementById('preview');
-                
-                // Create a new iframe with sandbox permissions
                 const newFrame = document.createElement('iframe');
                 newFrame.id = 'preview';
                 newFrame.className = 'preview' + (preview.classList.contains('active') ? ' active' : '');
@@ -968,55 +963,27 @@
                 preview.parentNode.replaceChild(newFrame, preview);
                 preview = newFrame;
 
-                // Create a blob with the content and proper content type
-                const consoleInterceptor = `
-                    const originalConsole = {
-                        log: console.log,
-                        error: console.error,
-                        warn: console.warn,
-                        info: console.info
-                    };
-                    
-                    function sendToConsole(level, ...args) {
-                        window.parent.postMessage({
-                            type: 'console',
-                            level: level,
-                            data: args,
-                            timestamp: new Date().toISOString()
-                        }, '*');
-                        originalConsole[level].apply(console, args);
-                    }
-                    
-                    console.log = (...args) => sendToConsole('log', ...args);
-                    console.error = (...args) => sendToConsole('error', ...args);
-                    console.warn = (...args) => sendToConsole('warn', ...args);
-                    console.info = (...args) => sendToConsole('info', ...args);
-                    
-                    window.onerror = function(message, source, lineno, colno, error) {
-                        sendToConsole('error', error || message);
-                        return true;
-                    };
-                    
-                    window.onunhandledrejection = function(event) {
-                        sendToConsole('error', event.reason);
-                    };
-                `;
+                // Console interceptor script
+                const consoleInterceptor = `\nconst originalConsole = {\n    log: console.log,\n    error: console.error,\n    warn: console.warn,\n    info: console.info\n};\nfunction sendToConsole(level, ...args) {\n    window.parent.postMessage({\n        type: 'console',\n        level: level,\n        data: args,\n        timestamp: new Date().toISOString()\n    }, '*');\n    originalConsole[level].apply(console, args);\n}\nconsole.log = (...args) => sendToConsole('log', ...args);\nconsole.error = (...args) => sendToConsole('error', ...args);\nconsole.warn = (...args) => sendToConsole('warn', ...args);\nconsole.info = (...args) => sendToConsole('info', ...args);\nwindow.onerror = function(message, source, lineno, colno, error) {\n    sendToConsole('error', error || message);\n    return true;\n};\nwindow.onunhandledrejection = function(event) {\n    sendToConsole('error', event.reason);\n};\n`;
 
-                // Build the HTML document in parts to avoid script parsing issues
-                const parts = [
-                    '<!DOCTYPE html><html><head><meta charset="UTF-8">',
-                    '<style>', css, '</style>',
-                    '<script>', consoleInterceptor, '<\/script>',
-                    '</head><body>', html, '</body>',
-                    '<script>', js, '<\/script></html>'
-                ];
+                // Detect if user HTML is a full HTML document
+                const isFullHtml = /<html[\s>]|<!doctype html/i.test(html);
+                let docContent;
+                if (isFullHtml) {
+                    // Inject console interceptor into <head> if possible
+                    docContent = html.replace(/(<head[^>]*>)/i, `$1\n<script>${consoleInterceptor}<\/script>`);
+                } else {
+                    // Use template as before
+                    docContent = [
+                        '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+                        '<style>', css, '</style>',
+                        '<script>', consoleInterceptor, '<\/script>',
+                        '</head><body>', html, '</body>',
+                        '<script>', js, '<\/script></html>'
+                    ].join('');
+                }
 
-                // Create blob with proper encoding
-                const blob = new Blob(parts, { 
-                    type: 'text/html; charset=utf-8'
-                });
-                
-                // Set up the iframe with the blob URL
+                const blob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 preview.src = url;
 
@@ -1024,13 +991,11 @@
                     document.querySelector('.output-tabs .tab[data-output="preview"]').click();
                 }
 
-                // Clean up the blob URL after the iframe loads
                 preview.addEventListener('load', function cleanup() {
                     URL.revokeObjectURL(url);
                     preview.removeEventListener('load', cleanup);
                 });
 
-                // Switch to preview tab
                 if (document.querySelector('.output-tabs .tab[data-output="preview"]')) {
                     document.querySelector('.output-tabs .tab[data-output="preview"]').click();
                 }
