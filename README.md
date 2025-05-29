@@ -6,7 +6,6 @@
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/NellowTCS/HTMLRunner/webpack.yml)
 
-
 A powerful, browser-based HTML/CSS/JavaScript code editor and live preview tool. Write, test, and debug your web code with real-time execution and an integrated console.
 
 I learned TypeScript finally, yay!!!
