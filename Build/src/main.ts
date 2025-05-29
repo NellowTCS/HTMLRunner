@@ -13,6 +13,7 @@ declare global {
         exportAsZip: () => Promise<void>;
         copyAllConsole: () => void;
         copyEditorContent: (editor: string) => void;
+        toggleSearch: () => void;
     }
 }
 
@@ -28,6 +29,11 @@ import 'codemirror/addon/lint/lint';
 import 'codemirror/addon/lint/javascript-lint';
 import 'codemirror/addon/lint/css-lint';
 import 'codemirror/addon/lint/html-lint';
+import 'codemirror/addon/search/search';
+import 'codemirror/addon/search/searchcursor';
+import 'codemirror/addon/dialog/dialog';
+import 'codemirror/addon/scroll/annotatescrollbar';
+import 'codemirror/addon/search/matchesonscrollbar';
 import Split from 'split.js';
 import * as prettier from 'prettier/standalone';
 import * as parserHtml from 'prettier/plugins/html';
@@ -207,7 +213,41 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+// Add global keyboard shortcut handler for search
+function addGlobalSearchShortcuts() {
+    const preventDefault = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSearch(e.key === 'f' ? 'find' : 'replace');
+        }
+    };
+    window.addEventListener('keydown', preventDefault, true);
+}
+
 // Initialize editors
+// Initialize search controls
+function initializeSearchControls(tabsContainer: Element): void {
+    const searchControls = document.createElement('div');
+    searchControls.className = 'search-controls';
+
+    const searchBtn = document.createElement('button');
+    searchBtn.className = 'search-btn';
+    searchBtn.innerHTML = '<i class="fas fa-search"></i>';
+    searchBtn.title = 'Search (Ctrl+F)';
+    searchBtn.onclick = () => toggleSearch('find');
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.className = 'replace-btn';
+    replaceBtn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+    replaceBtn.title = 'Replace (Ctrl+H)';
+    replaceBtn.onclick = () => toggleSearch('replace');
+
+    searchControls.appendChild(searchBtn);
+    searchControls.appendChild(replaceBtn);
+    tabsContainer.appendChild(searchControls);
+}
+
 function initializeEditors(): void {
     const htmlContainer = document.getElementById('html-editor-container');
     const cssContainer = document.getElementById('css-editor-container');
@@ -219,8 +259,7 @@ function initializeEditors(): void {
 
     const cm = CodeMirror as unknown as CodeMirrorInstance;
 
-    editors.html = cm(htmlContainer, {
-        mode: 'htmlmixed',
+    const commonOptions = {
         theme: isDarkMode ? 'monokai' : 'default',
         lineNumbers: true,
         indentUnit: 2,
@@ -228,46 +267,97 @@ function initializeEditors(): void {
         indentWithTabs: false,
         lineWrapping: true,
         extraKeys: {
-            'Tab': (cm: Editor) => cm.execCommand('indentMore'),
-            'Shift-Tab': (cm: Editor) => cm.execCommand('indentLess'),
-            'Ctrl-Enter': () => runCode(),
-            'Ctrl-F': () => void formatCode(),
-            'Ctrl-/': 'toggleComment'
-        }
-    });
-    editors.css = cm(cssContainer, {
-        mode: 'css',
-        theme: isDarkMode ? 'monokai' : 'default',
-        lineNumbers: true,
-        indentUnit: 2,
-        tabSize: 2,
-        indentWithTabs: false,
-        lineWrapping: true,
-        extraKeys: {
-            'Tab': (cm: Editor) => cm.execCommand('indentMore'),
-            'Shift-Tab': (cm: Editor) => cm.execCommand('indentLess'),
-            'Ctrl-Enter': () => runCode(),
-            'Ctrl-F': () => void formatCode(),
-            'Ctrl-/': 'toggleComment'
-        }
-    });
-    editors.js = cm(jsContainer, {
-        mode: 'javascript',
-        theme: isDarkMode ? 'monokai' : 'default',
-        lineNumbers: true,
-        indentUnit: 2,
-        tabSize: 2,
-        indentWithTabs: false,
-        lineWrapping: true,
-        lint: true,
-        extraKeys: {
-            'Tab': (cm: Editor) => cm.execCommand('indentMore'),
-            'Shift-Tab': (cm: Editor) => cm.execCommand('indentLess'),
-            'Ctrl-Enter': () => runCode(),
-            'Ctrl-F': () => void formatCode(),
-            'Ctrl-/': 'toggleComment'
-        }
-    });
+            'Tab': (cm: Editor) => { cm.execCommand('indentMore'); },
+            'Shift-Tab': (cm: Editor) => { cm.execCommand('indentLess'); },
+            'Ctrl-Enter': (cm: Editor) => { runCode(); },
+            'Ctrl-F': (cm: Editor) => {
+                const wrapper = cm.getWrapperElement();
+                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
+                const isFind = existingDialog?.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
+                if (existingDialog && isFind) {
+                    existingDialog.classList.remove('visible');
+                    setTimeout(() => {
+                        cm.execCommand('clearSearch');
+                        existingDialog.remove();
+                    }, 200);
+                } else {
+                    toggleSearch('find');
+                }
+            },
+            'Cmd-F': (cm: Editor) => {
+                const wrapper = cm.getWrapperElement();
+                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
+                const isFind = existingDialog?.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
+                if (existingDialog && isFind) {
+                    existingDialog.classList.remove('visible');
+                    setTimeout(() => {
+                        cm.execCommand('clearSearch');
+                        existingDialog.remove();
+                    }, 200);
+                } else {
+                    toggleSearch('find');
+                }
+            },
+            'Ctrl-H': (cm: Editor) => {
+                const wrapper = cm.getWrapperElement();
+                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
+                if (existingDialog) {
+                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
+                    if (isReplace) {
+                        // If Replace is open, close it (do not reopen)
+                        existingDialog.classList.remove('visible');
+                        setTimeout(() => {
+                            cm.execCommand('clearSearch');
+                            existingDialog.remove();
+                        }, 200);
+                    } else {
+                        // If Find is open, close and open Replace
+                        existingDialog.classList.remove('visible');
+                        setTimeout(() => {
+                            cm.execCommand('clearSearch');
+                            existingDialog.remove();
+                            toggleSearch('replace');
+                        }, 200);
+                    }
+                } else {
+                    // If nothing is open, open Replace
+                    toggleSearch('replace');
+                }
+            },
+            'Cmd-H': (cm: Editor) => {
+                const wrapper = cm.getWrapperElement();
+                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
+                if (existingDialog) {
+                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
+                    if (isReplace) {
+                        // If Replace is open, close it (do not reopen)
+                        existingDialog.classList.remove('visible');
+                        setTimeout(() => {
+                            cm.execCommand('clearSearch');
+                            existingDialog.remove();
+                        }, 200);
+                    } else {
+                        // If Find is open, close and open Replace
+                        existingDialog.classList.remove('visible');
+                        setTimeout(() => {
+                            cm.execCommand('clearSearch');
+                            existingDialog.remove();
+                            toggleSearch('replace');
+                        }, 200);
+                    }
+                } else {
+                    // If nothing is open, open Replace
+                    toggleSearch('replace');
+                }
+            },
+            'Ctrl-/': 'toggleComment',
+            'Cmd-/': 'toggleComment'
+        },
+    };
+
+    editors.html = cm(htmlContainer, { ...commonOptions, mode: 'htmlmixed' });
+    editors.css = cm(cssContainer, { ...commonOptions, mode: 'css' });
+    editors.js = cm(jsContainer, { ...commonOptions, mode: 'javascript', lint: true });
 
     // Auto-run on change
     if (isAutoRun) {
@@ -808,6 +898,62 @@ function initializeLogFilters(): void {
     }
 }
 
+// Add search toggle function
+export function toggleSearch(mode: 'find' | 'replace' = 'find'): void {
+    const editor = editors[currentTab];
+    if (editor) {
+        const wrapper = editor.getWrapperElement();
+        const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
+
+        if (existingDialog) {
+            const isCurrentReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
+            const currentMode = isCurrentReplace ? 'replace' : 'find';
+            // Always close the current dialog first
+            existingDialog.classList.remove('visible');
+            const closeDialog = () => {
+                editor.execCommand('clearSearch');
+                existingDialog.remove();
+            };
+            // Close dialog with correct behavior
+            if (mode === currentMode) {
+                // If same mode (Find->Find or Replace->Replace), just close
+                setTimeout(closeDialog, 200);
+                return;
+            } else {
+                // If switching modes, always close current and open requested
+                setTimeout(() => {
+                    closeDialog();
+                    openSearchDialog(editor, mode);
+                }, 200);
+            }
+        } else {
+            // No dialog exists, simply open new one
+            openSearchDialog(editor, mode);
+        }
+    }
+}
+
+function openSearchDialog(editor: Editor, mode: 'find' | 'replace'): void {
+    editor.execCommand(mode);
+    
+    setTimeout(() => {
+        const dialog = editor.getWrapperElement().querySelector('.CodeMirror-dialog') as HTMLElement;
+        if (dialog) {
+            const tabsBar = document.querySelector('.editor-tabs');
+            if (tabsBar) {
+                dialog.style.zIndex = '5';
+                
+                // Focus the input
+                const input = dialog.querySelector('input');
+                if (input) input.focus();
+                
+                // Trigger animation
+                requestAnimationFrame(() => dialog.classList.add('visible'));
+            }
+        }
+    }, 0);
+}
+
 // Utility functions
 function showLoading() { loadingEl.classList.add('active'); }
 function hideLoading() { loadingEl.classList.remove('active'); }
@@ -863,7 +1009,8 @@ Object.assign(window, {
     switchOutput,
     exportAsZip,
     copyAllConsole,
-    copyEditorContent
+    copyEditorContent,
+    toggleSearch
 });
 
 // Initialize
@@ -871,4 +1018,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEditors();
     initializeCopyButtons();
     initializeLogFilters();
+    addGlobalSearchShortcuts();
+    
+    // Initialize search controls
+    const editorTabs = document.querySelector('.editor-tabs');
+    if (editorTabs) {
+        initializeSearchControls(editorTabs);
+    }
 });
