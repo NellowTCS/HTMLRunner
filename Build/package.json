@@ -26,6 +26,7 @@
     "split.js": "^1.6.5"
   },
   "devDependencies": {
+    "@types/file-saver": "^2.0.7",
     "@types/prettier": "^2.7.3",
     "@types/split.js": "^1.4.0",
     "copy-webpack-plugin": "^13.0.0",
