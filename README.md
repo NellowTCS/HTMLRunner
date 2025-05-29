@@ -54,6 +54,7 @@ Visit the live version at: [https://nellowtcs.github.io/HTMLRunner/](https://nel
 
 ### Single File
 Due to the Webpack build being rather large, I recommend using the website, but you do you :D.
+Formatting isn't working in the Web Version currently.
 
 ### Local Installation
 
