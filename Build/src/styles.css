@@ -69,6 +69,10 @@ body {
     background-color: #FF9800;
     color: white;
 }
+.btn-download {
+    background-color: #1c29d9;
+    color: white;
+}
 .btn:hover {
     opacity: 0.9;
 }
@@ -273,9 +277,6 @@ body.dark-mode { background-color: #1a1a1a; color: #e0e0e0; }
 .dark-mode .console-object { color: #9cdcfe; }
 .dark-mode .console-object-content { border-left-color: #444; }
 .dark-mode .timestamp { color: #888; }
-.dark-mode .console-log { color: #9cdcfe; }
-.dark-mode .console-warn { color: #dcdcaa; }
-.dark-mode .console-error { color: #f48771; }
 .dark-mode .console-stack { color: #888; }
 .theme-toggle {
     background: none;
@@ -314,6 +315,126 @@ body.dark-mode { background-color: #1a1a1a; color: #e0e0e0; }
 }
 .dark-mode .gutter:hover {
     background-color: #444;
+}
+.copy-btn {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 1);
+}
+
+.console-entry:hover .copy-btn,
+.editor-container:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn i {
+    font-size: 12px;
+}
+
+.dark-mode .copy-btn {
+    background: rgba(40, 40, 40, 0.9);
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+.dark-mode .copy-btn:hover {
+    background: rgba(40, 40, 40, 1);
+}
+.console-filters {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.filter-toggle {
+    background: #fce5e5;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    font-weight: normal;
+}
+
+.filter-toggle.active {
+    background: rgb(235, 251, 231);
+    border-width: 2px;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filter-toggle:hover {
+    background: white;
+}
+
+.filter-toggle.log {
+    color: #212121;
+}
+
+.filter-toggle.error {
+    color: #d32f2f;
+}
+
+.filter-toggle.warn {
+    color: #f57c00;
+}
+
+.filter-toggle.info {
+    color: #0288d1;
+}
+
+.console-entry.filtered {
+    display: none;
+}
+
+.dark-mode .filter-toggle {
+    background:rgb(66, 51, 51);
+    border-color: #444;
+}
+
+.dark-mode .filter-toggle.active {
+    background: rgb(51, 65, 49);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.dark-mode .filter-toggle:hover {
+    background: #1e1e1e;
+}
+
+.dark-mode .filter-toggle.log {
+    color: #e0e0e0;
+}
+
+.dark-mode .filter-toggle.error {
+    color: #f48771;
+}
+
+.dark-mode .filter-toggle.warn {
+    color: #dcdcaa;
+}
+
+.dark-mode .filter-toggle.info {
+    color: #4fc3f7;
 }
 @media (max-width: 768px) {
     .main { flex-direction: column; }

@@ -10,6 +10,9 @@ declare global {
         toggleDarkMode: () => void;
         switchTab: (tab: string) => void;
         switchOutput: (output: string) => void;
+        exportAsZip: () => Promise<void>;
+        copyAllConsole: () => void;
+        copyEditorContent: (editor: string) => void;
     }
 }
 
@@ -32,6 +35,9 @@ import * as parserCss from 'prettier/plugins/postcss';
 import * as parserFlow from 'prettier/plugins/flow';
 import * as prettierPluginEstree from "prettier/plugins/estree";
 import { ModuleBlock } from 'typescript';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { copyToClipboard } from './utils';
 
 interface CodeMirrorInstance {
     (element: HTMLElement, options?: EditorConfiguration): Editor;
@@ -286,10 +292,14 @@ function initializeEditors(): void {
 window.addEventListener('message', (event) => {
     if (event.data.type === 'console') {
         const entry = document.createElement('div');
-        entry.className = 'console-entry';
+        entry.className = `console-entry ${!activeFilters.has(event.data.level) ? 'filtered' : ''}`;
+
+        // Create timestamp
         const timestamp = document.createElement('span');
         timestamp.className = 'timestamp';
         timestamp.textContent = new Date(event.data.timestamp).toLocaleTimeString();
+
+        // Create message
         const message = document.createElement('span');
         message.className = `console-${event.data.level}`;
         if (event.data.data && event.data.data.length) {
@@ -302,6 +312,8 @@ window.addEventListener('message', (event) => {
                 }
             });
         }
+
+        // Add stack trace if exists
         if (event.data.data[1]?.stack) {
             const stack = document.createElement('div');
             stack.className = 'console-stack';
@@ -309,9 +321,26 @@ window.addEventListener('message', (event) => {
             stack.addEventListener('click', () => stack.classList.toggle('expanded'));
             message.appendChild(stack);
         }
+
+        // Add copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.innerHTML = '<i class="far fa-copy"></i>';
+        copyBtn.addEventListener('click', () => {
+            const text = event.data.data.map((item: any) => 
+                typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)
+            ).join(' ');
+            copyToClipboard(text);
+            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                copyBtn.innerHTML = '<i class="far fa-copy"></i>';
+            }, 2000);
+        });
+
         entry.appendChild(timestamp);
         entry.appendChild(document.createTextNode(' '));
         entry.appendChild(message);
+        entry.appendChild(copyBtn);
         consoleOutput.appendChild(entry);
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
@@ -582,8 +611,10 @@ function resetCode() {
 <html>
 <head>
 <title>My Page</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<script src="main.js"></script>
 <h1>Hello, HTMLRunner!</h1>
 <p>This is a demo page.</p>
 <button onclick="testFunction()">Click me!</button>
@@ -641,6 +672,142 @@ function updateThemeIcon(): void {
     }
 }
 
+// Export editors' content as ZIP
+async function exportAsZip() {
+    const zip = new JSZip();
+    zip.file('index.html', editors.html.getValue());
+    zip.file('styles.css', editors.css.getValue());
+    zip.file('script.js', editors.js.getValue());
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, 'htmlrunner-export.zip');
+}
+
+// Copy console content
+function copyAllConsole(): void {
+    const entries = Array.from(consoleOutput.children);
+    const text = entries.map(entry => {
+        const timestamp = entry.querySelector('.timestamp')?.textContent || '';
+        const message = Array.from(entry.querySelectorAll('.console-log, .console-error, .console-warn, .console-info'))
+            .map(el => el.textContent)
+            .join('');
+        return `${timestamp} ${message}`;
+    }).join('\n');
+    copyToClipboard(text);
+}
+
+// Copy editor content
+function copyEditorContent(editor: string): void {
+    const content = editors[editor].getValue();
+    copyToClipboard(content);
+}
+
+// Initialize copy buttons
+function initializeCopyButtons(): void {
+    // Add copy buttons to editors
+    ['html', 'css', 'js'].forEach(editorType => {
+        const container = document.getElementById(`${editorType}-editor-container`);
+        if (container) {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.innerHTML = '<i class="far fa-copy"></i>';
+            copyBtn.addEventListener('click', () => {
+                copyEditorContent(editorType);
+                copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="far fa-copy"></i>';
+                }, 2000);
+            });
+            container.appendChild(copyBtn);
+        }
+    });
+
+    // Add copy all button to console
+    const consoleTab = document.querySelector('.output-tabs .tab[data-output="console"]');
+    if (consoleTab) {
+        const copyAllBtn = document.createElement('button');
+        copyAllBtn.className = 'copy-btn';
+        copyAllBtn.style.position = 'static';
+        copyAllBtn.style.marginLeft = 'auto';
+        copyAllBtn.style.opacity = '1';
+        copyAllBtn.innerHTML = '<i class="far fa-copy"></i> Copy All';
+        copyAllBtn.addEventListener('click', () => {
+            copyAllConsole();
+            copyAllBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => {
+                copyAllBtn.innerHTML = '<i class="far fa-copy"></i> Copy All';
+            }, 2000);
+        });
+        consoleTab.parentElement?.appendChild(copyAllBtn);
+    }
+}
+
+// Log filter state
+let activeFilters = new Set(['log', 'error', 'warn', 'info']);
+
+function toggleLogFilter(type: 'log' | 'error' | 'warn' | 'info'): void {
+    const button = document.querySelector(`.filter-toggle.${type}`);
+    if (button) {
+        const isActive = button.classList.contains('active');
+        if (isActive) {
+            activeFilters.delete(type);
+            button.classList.remove('active');
+        } else {
+            activeFilters.add(type);
+            button.classList.add('active');
+        }
+        localStorage.setItem('logFilters', JSON.stringify(Array.from(activeFilters)));
+        applyLogFilters();
+    }
+}
+
+function applyLogFilters(): void {
+    document.querySelectorAll('.console-entry').forEach(entry => {
+        const messageElement = entry.querySelector('.console-log, .console-error, .console-warn, .console-info');
+        if (messageElement) {
+            const logType = Array.from(messageElement.classList)
+                .find(cls => cls.startsWith('console-'))
+                ?.replace('console-', '');
+            if (logType && !activeFilters.has(logType)) {
+                entry.classList.add('filtered');
+            } else {
+                entry.classList.remove('filtered');
+            }
+        }
+    });
+}
+
+function initializeLogFilters(): void {
+    try {
+        const savedFilters = localStorage.getItem('logFilters');
+        if (savedFilters) {
+            activeFilters = new Set(JSON.parse(savedFilters));
+        }
+    } catch (e) {
+        console.error('Failed to load log filters:', e);
+    }
+
+    const consoleTab = document.querySelector('.output-tabs');
+    if (consoleTab) {
+        const filtersDiv = document.createElement('div');
+        filtersDiv.className = 'console-filters';
+        
+        ['log', 'error', 'warn', 'info'].forEach(type => {
+            const button = document.createElement('button');
+            button.className = `filter-toggle ${type} ${activeFilters.has(type) ? 'active' : ''}`;
+            button.innerHTML = `<i class="fas fa-${
+                type === 'log' ? 'terminal' :
+                type === 'error' ? 'times-circle' :
+                type === 'warn' ? 'exclamation-triangle' :
+                'info-circle'
+            }"></i>${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            button.onclick = () => toggleLogFilter(type as any);
+            filtersDiv.appendChild(button);
+        });
+        
+        consoleTab.insertBefore(filtersDiv, consoleTab.lastElementChild);
+    }
+}
+
 // Utility functions
 function showLoading() { loadingEl.classList.add('active'); }
 function hideLoading() { loadingEl.classList.remove('active'); }
@@ -693,8 +860,15 @@ Object.assign(window, {
     toggleAutoRun,
     toggleDarkMode,
     switchTab,
-    switchOutput
+    switchOutput,
+    exportAsZip,
+    copyAllConsole,
+    copyEditorContent
 });
 
 // Initialize
-document.addEventListener('DOMContentLoaded', initializeEditors);
+document.addEventListener('DOMContentLoaded', () => {
+    initializeEditors();
+    initializeCopyButtons();
+    initializeLogFilters();
+});
