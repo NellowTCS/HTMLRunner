@@ -98,6 +98,7 @@ let currentTab: string = 'html';
 let currentOutput: string = 'preview';
 let isDarkMode: boolean = localStorage.getItem('darkMode') === 'true';
 let isAutoRun: boolean = localStorage.getItem('autoRun') === 'true';
+let splitInstance: Split.Instance; // Add Split instance variable
 const consoleOutput = document.getElementById('console') as HTMLDivElement;
 const loadingEl = document.getElementById('loading') as HTMLDivElement;
 const errorEl = document.getElementById('error-message') as HTMLDivElement;
@@ -126,6 +127,79 @@ const consoleInterceptor = `
         sendToConsole('error', event.reason, { stack: event.reason?.stack });
     };
 `;
+
+// Initialize Split.js
+function initializeSplit() {
+    if (splitInstance) {
+        splitInstance.destroy();
+    }
+
+    const elements = ['#editor-panel', '#output-panel'];
+    const direction = window.innerWidth <= 768 ? 'vertical' : 'horizontal';
+    
+    // Make sure the elements exist and are visible
+    if (!elements.every(id => document.querySelector(id))) {
+        console.error('Split.js elements not found');
+        return;
+    }
+
+    splitInstance = Split(elements, {
+        sizes: state.splitSizes || [50, 50],
+        minSize: 200,
+        gutterSize: 10,
+        snapOffset: 0,
+        dragInterval: 1,
+        direction,
+        elementStyle: (dimension, size, gutterSize) => ({
+            'flex-basis': `calc(${size}% - ${gutterSize}px)`,
+        }),
+        gutterStyle: (dimension, gutterSize) => ({
+            'flex-basis': `${gutterSize}px`,
+        }),
+        onDragStart: function() {
+            document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+        },
+        onDrag: function() {
+            // Ensure CodeMirror updates its dimensions during drag
+            Object.values(editors).forEach(editor => editor.refresh());
+        },
+        onDragEnd: function(sizes) {
+            document.body.style.cursor = '';
+            state.splitSizes = sizes;
+            saveState();
+            // Final refresh of editors
+            Object.values(editors).forEach(editor => editor.refresh());
+        }
+    });
+
+    // Trigger initial refresh of editors
+    setTimeout(() => {
+        Object.values(editors).forEach(editor => editor.refresh());
+    }, 0);
+}
+
+// Handle window resize with proper cleanup
+let resizeTimeout: number;
+const handleResize = () => {
+    if (resizeTimeout) {
+        window.clearTimeout(resizeTimeout);
+    }
+    resizeTimeout = window.setTimeout(() => {
+        // Always re-initialize on resize to ensure proper direction
+        initializeSplit();
+    }, 250);
+};
+
+// Clean up previous listener if it exists
+window.removeEventListener('resize', handleResize);
+window.addEventListener('resize', handleResize);
+
+// Clean up Split.js instance when the page is unloaded
+window.addEventListener('beforeunload', () => {
+    if (splitInstance) {
+        splitInstance.destroy();
+    }
+});
 
 // Initialize editors
 function initializeEditors(): void {
@@ -197,16 +271,7 @@ function initializeEditors(): void {
     }
 
     // Initialize Split.js
-    Split(['#editor-panel', '#output-panel'], {
-        sizes: state.splitSizes || [50, 50],
-        minSize: 200,
-        gutterSize: 8,
-        direction: window.innerWidth <= 768 ? 'vertical' : 'horizontal',
-        onDragEnd: (sizes) => {
-            state.splitSizes = sizes;
-            saveState();
-        }
-    });
+    initializeSplit();
 
     // Load state
     loadState();
@@ -453,7 +518,13 @@ function switchTab(tab: string): void {
     editorContainer.style.display = 'block';
     tabElement.classList.add('active');
     editors[tab].focus();
-    editors[tab].refresh(); // Ensure CodeMirror updates its display
+
+    // Ensure proper rendering after tab switch
+    setTimeout(() => {
+        // Refresh all editors to ensure proper sizing
+        Object.values(editors).forEach(editor => editor.refresh());
+    }, 0);
+    
     saveState();
 }
 

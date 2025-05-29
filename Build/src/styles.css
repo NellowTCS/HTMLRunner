@@ -80,12 +80,13 @@ body {
     margin: 10px;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 .editor-panel, .output-panel {
-    flex: 1;
     display: flex;
     flex-direction: column;
     background: white;
+    min-width: 0; /* Important for flexbox and Split.js */
 }
 .editor-tabs, .output-tabs {
     display: flex;
@@ -105,28 +106,39 @@ body {
     font-weight: 500;
 }
 .editor-container {
-    height: 100%;
+    flex: 1;
+    position: relative;
     overflow: hidden;
+    display: none;
+}
+.editor-container:not([style*="display: none"]) {
+    display: block;
 }
 .CodeMirror {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: 100%;
+    width: 100%;
     font-family: 'Fira Code', monospace;
     font-size: 14px;
     line-height: 1.5;
 }
 .output-content {
     flex: 1;
-    overflow: auto;
-    background: white;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
-.preview {
-    height: 100%;
-    width: 100%;
-    border: none;
-    background: white;
+.preview, .console {
+    flex: 1;
     display: none;
+    height: 100%;
 }
-.preview.active {
+.preview.active, .console.active {
     display: block;
 }
 .console {
@@ -143,14 +155,61 @@ body {
     display: block;
 }
 .console-entry {
-    margin-bottom: 8px;
-    padding: 4px 0;
+    margin-bottom: 16px;
+    margin-top: 12px;
+    padding: 0;
+    position: relative;
 }
-.console-log { color: #212121; }
-.console-error { color: #d32f2f; background: #ffebee; padding: 8px; border-left: 3px solid #d32f2f; }
-.console-warn { color: #f57c00; background: #fff3e0; padding: 8px; border-left: 3px solid #ff9800; }
-.console-info { color: #0288d1; }
-.console-stack { cursor: pointer; color: #757575; font-size: 11px; display: none; }
+
+.console-log { 
+    color: #212121;
+    padding: 6px 12px;
+    margin: 6px 0;
+    line-height: 2.8;
+}
+
+.console-error { 
+    color: #d32f2f; 
+    background: #ffebee; 
+    padding: 8px 14px; 
+    margin: 8px 18px;
+    border-radius: 8px;
+    border-left: 3px solid #d32f2f; 
+    line-height: 2.8;
+    word-break: break-word;
+}
+
+.console-warn { 
+    color: #f57c00; 
+    background: #fff3e0; 
+    padding: 8px 14px; 
+    margin: 8px 18px;
+    border-radius: 8px;
+    border-left: 3px solid #ff9800; 
+    line-height: 2.8;
+    word-break: break-word;
+}
+
+.console-info { 
+    color: #0288d1;
+    background: rgba(2, 136, 209, 0.1);
+    padding: 8px 14px;
+    margin: 8px 18px;
+    border-radius: 8px;
+    border-left: 3px solid #0288d1;
+    line-height: 2.8;
+    word-break: break-word;
+}
+.console-stack { 
+    cursor: pointer; 
+    color: #757575; 
+    font-size: 11px; 
+    display: none;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
 .console-stack.expanded { display: block; }
 .timestamp { color: #757575; font-size: 11px; margin-right: 8px; }
 .loading {
@@ -234,17 +293,27 @@ body.dark-mode { background-color: #1a1a1a; color: #e0e0e0; }
 .dark-mode .theme-toggle:hover { background: rgba(100, 181, 246, 0.1); }
 /* Split.js gutter */
 .gutter {
-    background-color: #e0e0e0;
+    background-color: #eee;
     background-repeat: no-repeat;
     background-position: 50%;
+    transition: background-color 0.2s;
+}
+.gutter:hover {
+    background-color: #ddd;
 }
 .gutter.gutter-horizontal {
-    cursor: ew-resize;
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAg/FA/z//w7AA0E4nFxcXFz8/Pz4A8IApg6x+0gAAAABJRU5ErkJggg==');
+    cursor: col-resize;
+    width: 10px !important;
 }
 .gutter.gutter-vertical {
-    cursor: ns-resize;
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAgMAAAB9Q0ktAAAACVBMVEUAAACZmZmZmZnwM5EgAAAAAnRSTlMAAHaTzTgAAAAmSURBVAgdYxgaGCDAAMmBAMMuEAwCMjAwMDBIAAuIQjAwMECAFQ4AAEeHBaUAAAAASUVORK5CYII=');
+    cursor: row-resize;
+    height: 10px !important;
+}
+.dark-mode .gutter {
+    background-color: #333;
+}
+.dark-mode .gutter:hover {
+    background-color: #444;
 }
 @media (max-width: 768px) {
     .main { flex-direction: column; }
