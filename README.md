@@ -53,8 +53,8 @@ A powerful, browser-based HTML/CSS/JavaScript code editor and live preview tool.
 Visit the live version at: [https://nellowtcs.github.io/HTMLRunner/](https://nellowtcs.github.io/HTMLRunner/)
 
 ### Single File
-Due to the Webpack build being rather large, I recommend using the website, but you do you :D.
-Formatting isn't working in the Web Version currently.
+Due to the Webpack build being rather large, I recommend using the website, but you do you :D. </br>
+However, formatting your code isn't working in the Web Version currently.
 
 ### Local Installation
 
