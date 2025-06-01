@@ -1,4 +1,5 @@
-import { Editor, EditorConfiguration } from 'codemirror';
+import { EditorView } from "@codemirror/view";
+import { Extension } from "@codemirror/state";
 
 declare global {
     interface Window {
@@ -6,21 +7,19 @@ declare global {
     }
 }
 
+// CodeMirror 6 editor instance type is EditorView
+export type CodeMirrorEditor = EditorView;
+
+// Configuration for CM6 is an array of Extensions
+export type CodeMirrorEditorConfig = Extension | Extension[];
+
+// Type for the function that creates the editor and attaches it to an element
 export interface CodeMirrorInstance {
-    (element: HTMLElement, options?: EditorConfiguration): Editor;
-}
-
-export type CodeMirrorEditor = Editor;
-
-export interface CodeMirrorEditorConfig extends EditorConfiguration {
-    lint?: boolean | {
-        async?: boolean;
-        [key: string]: any;
-    };
+    (element: HTMLElement, options?: CodeMirrorEditorConfig): CodeMirrorEditor;
 }
 
 export interface Editors {
-    html: CodeMirrorEditor;
+    view: null, state: null
     css: CodeMirrorEditor;
     js: CodeMirrorEditor;
     [key: string]: CodeMirrorEditor;

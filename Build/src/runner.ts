@@ -9,9 +9,9 @@ export function runCode(): void {
     showLoading();
     clearConsole();
     try {
-        const html = editors.html.getValue();
-        const css = editors.css.getValue();
-        const js = editors.js.getValue();
+        const html = editors.html.state.doc.toString();  // Updated for CodeMirror 6
+        const css = editors.css.state.doc.toString();    // Updated for CodeMirror 6
+        const js = editors.js.state.doc.toString();      // Updated for CodeMirror 6
 
         // Pre-parse JS
         try {
@@ -71,22 +71,29 @@ export function runCode(): void {
 
 export async function formatCode(): Promise<void> {
     try {
-        const formattedHtml = await prettier.format(editors.html.getValue(), { 
+        const formattedHtml = await prettier.format(editors.html.state.doc.toString(), { 
             parser: 'html', 
             plugins: window.prettierPlugins 
         });
-        const formattedCss = await prettier.format(editors.css.getValue(), { 
+        const formattedCss = await prettier.format(editors.css.state.doc.toString(), { 
             parser: 'css', 
             plugins: window.prettierPlugins 
         });
-        const formattedJs = await prettier.format(editors.js.getValue(), { 
+        const formattedJs = await prettier.format(editors.js.state.doc.toString(), { 
             parser: 'babel', 
             plugins: window.prettierPlugins 
         });
         
-        editors.html.setValue(formattedHtml);
-        editors.css.setValue(formattedCss);
-        editors.js.setValue(formattedJs);
+        editors.html.dispatch({
+            changes: { from: 0, to: editors.html.state.doc.length, insert: formattedHtml }
+        });
+        editors.css.dispatch({
+            changes: { from: 0, to: editors.css.state.doc.length, insert: formattedCss }
+        });
+        editors.js.dispatch({
+            changes: { from: 0, to: editors.js.state.doc.length, insert: formattedJs }
+        });
+
         saveState();
     } catch (error: any) {
         showError(`Error formatting code: ${error.message}`);

@@ -13,9 +13,9 @@ export const state: State = {
 };
 
 export function saveState(): void {
-    state.html = editors.html.getValue();
-    state.css = editors.css.getValue();
-    state.js = editors.js.getValue();
+    state.html = editors.html.state.doc.toString();
+    state.css = editors.css.state.doc.toString();
+    state.js = editors.js.state.doc.toString();
     try {
         localStorage.setItem('htmlRunnerState', JSON.stringify(state));
     } catch (e: any) {
@@ -28,12 +28,27 @@ export function loadState(): void {
         const savedState = localStorage.getItem('htmlRunnerState');
         if (savedState) {
             const parsed = JSON.parse(savedState);
-            editors.html.setValue(parsed.html || '');
-            editors.css.setValue(parsed.css || '');
-            editors.js.setValue(parsed.js || '');
+
+            if (parsed.html !== undefined) {
+                editors.html.dispatch({
+                    changes: { from: 0, to: editors.html.state.doc.length, insert: parsed.html }
+                });
+            }
+            if (parsed.css !== undefined) {
+                editors.css.dispatch({
+                    changes: { from: 0, to: editors.css.state.doc.length, insert: parsed.css }
+                });
+            }
+            if (parsed.js !== undefined) {
+                editors.js.dispatch({
+                    changes: { from: 0, to: editors.js.state.doc.length, insert: parsed.js }
+                });
+            }
+
             if (parsed.activeTab) switchTab(parsed.activeTab);
             if (parsed.activeOutput) switchOutput(parsed.activeOutput);
             if (parsed.splitSizes) state.splitSizes = parsed.splitSizes;
+
             runCode();
         } else {
             resetCode();
@@ -46,7 +61,8 @@ export function loadState(): void {
 
 export function resetCode(): void {
     if (confirm('Are you sure you want to reset all code?')) {
-        editors.html.setValue(`<!DOCTYPE html>
+        editors.html.dispatch({
+            changes: { from: 0, to: editors.html.state.doc.length, insert: `<!DOCTYPE html>
 <html>
 <head>
 <title>My Page</title>
@@ -58,8 +74,11 @@ export function resetCode(): void {
 <p>This is a demo page.</p>
 <button onclick="testFunction()">Click me!</button>
 </body>
-</html>`);
-        editors.css.setValue(`body {
+</html>` }
+        });
+
+        editors.css.dispatch({
+            changes: { from: 0, to: editors.css.state.doc.length, insert: `body {
 font-family: Arial, sans-serif;
 margin: 20px;
 line-height: 1.6;
@@ -75,14 +94,19 @@ font-size: 16px;
 }
 button:hover {
 background: #1976D2;
-}`);
-        editors.js.setValue(`function testFunction() {
+}` }
+        });
+
+        editors.js.dispatch({
+            changes: { from: 0, to: editors.js.state.doc.length, insert: `function testFunction() {
 console.log('Button clicked!');
 console.warn('This is a warning');
 console.error('This is an error');
 console.info('This is an info');
 console.log('Object:', { name: 'Alice', age: 25, hobbies: ['coding', 'reading'] });
-}`);
+}` }
+        });
+
         runCode();
         saveState();
     }

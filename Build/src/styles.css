@@ -274,7 +274,6 @@ body.dark-mode { background-color: #1a1a1a; color: #e0e0e0; }
 .dark-mode .console-error { background: #3e2723; border-left-color: #d32f2f; }
 .dark-mode .console-warn { background: #3e2c00; border-left-color: #ff9800; }
 .dark-mode .console-info { color: #4fc3f7; }
-.dark-mode .console-log { color: #e0e0e0; }
 .dark-mode .console-object { color: #9cdcfe; }
 .dark-mode .console-object-content { border-left-color: #444; }
 .dark-mode .timestamp { color: #888; }

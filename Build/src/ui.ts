@@ -2,6 +2,11 @@ import { editors, darkMode as isDarkMode, autoRun as isAutoRun, setDarkMode, set
 import { saveState } from './state';
 import { runCode } from './runner';
 import { debounce } from './utils';
+import { EditorView } from '@codemirror/view';
+import { StateEffect, StateField, Transaction, Extension } from '@codemirror/state';
+
+// Define the effect for auto-run toggle
+const autoRunEffect = StateEffect.define<boolean>();
 
 export const loadingEl = document.getElementById('loading') as HTMLDivElement;
 export const errorEl = document.getElementById('error-message') as HTMLDivElement;
@@ -9,12 +14,12 @@ export const errorEl = document.getElementById('error-message') as HTMLDivElemen
 let currentTab = 'html';
 let currentOutput = 'preview';
 
-export function showLoading(): void { 
-    loadingEl.classList.add('active'); 
+export function showLoading(): void {
+    loadingEl.classList.add('active');
 }
 
-export function hideLoading(): void { 
-    loadingEl.classList.remove('active'); 
+export function hideLoading(): void {
+    loadingEl.classList.remove('active');
 }
 
 export function showError(message: string): void {
@@ -29,10 +34,10 @@ export function switchTab(tab: string): void {
         const container = c as HTMLElement;
         container.style.display = 'none';
     });
-    
+
     const editorContainer = document.getElementById(`${tab}-editor-container`);
     const tabElement = document.querySelector(`.editor-tabs .tab[data-tab="${tab}"]`);
-    
+
     if (!editorContainer || !tabElement || !editors[tab]) {
         console.error(`Invalid tab: ${tab}`);
         return;
@@ -40,7 +45,7 @@ export function switchTab(tab: string): void {
 
     editorContainer.style.display = 'block';
     tabElement.classList.add('active');
-    editors[tab].focus();
+    editors[tab].focus(); // Ensure focus for the editor
     saveState();
 }
 
@@ -67,13 +72,22 @@ export function switchOutput(output: string): void {
 export function toggleAutoRun(): void {
     setAutoRun(!isAutoRun);
     localStorage.setItem('autoRun', String(isAutoRun));
+
     Object.values(editors).forEach(editor => {
         const handler = debounce(runCode, 1000);
-        editor.off('change', handler);
+
+        // Set up the transaction for autoRun effect
         if (isAutoRun) {
-            editor.on('change', handler);
+            editor.dispatch({
+                effects: [autoRunEffect.of(true)] // Activate auto-run
+            });
+        } else {
+            editor.dispatch({
+                effects: [autoRunEffect.of(false)] // Deactivate auto-run
+            });
         }
     });
+
     updateAutoRunStatus();
 }
 
@@ -88,9 +102,20 @@ export function toggleDarkMode(): void {
     setDarkMode(!isDarkMode);
     document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', String(isDarkMode));
+
+    // Apply dark mode to each editor instance
     Object.values(editors).forEach(editor => {
-        editor.setOption('theme', isDarkMode ? 'monokai' : 'default');
+        const newTheme = isDarkMode ? 'monokai' : 'default';
+
+        editor.dispatch({
+            effects: [
+                StateEffect.appendConfig.of(EditorView.theme({
+                    '&': { backgroundColor: isDarkMode ? '#2e2e2e' : '#fff' }
+                }))
+            ]
+        });
     });
+
     updateThemeIcon();
 }
 

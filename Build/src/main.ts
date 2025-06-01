@@ -1,4 +1,24 @@
-// Type declarations
+import { EditorView } from "@codemirror/view";
+import { basicSetup } from "@codemirror/basic-setup"
+import { EditorState } from "@codemirror/state";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { javascript } from "@codemirror/lang-javascript";
+import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
+import { lintGutter, linter } from "@codemirror/lint";
+import { search, openSearchPanel, closeSearchPanel, searchKeymap } from "@codemirror/search";
+import { commentKeymap, indentWithTab } from "@codemirror/commands";
+import Split from "split.js";
+import * as prettier from "prettier/standalone";
+import * as parserHtml from "prettier/plugins/html";
+import * as parserCss from "prettier/plugins/postcss";
+import * as parserFlow from "prettier/plugins/flow";
+import * as prettierPluginEstree from "prettier/plugins/estree";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import { copyToClipboard } from "./utils";
+
+// Type declarations for global window properties
 declare global {
     interface Window {
         prettierPlugins: any[];
@@ -17,52 +37,12 @@ declare global {
     }
 }
 
-import { Editor, EditorConfiguration } from 'codemirror';
-import * as CodeMirror from 'codemirror';
-import 'codemirror/mode/htmlmixed/htmlmixed';
-import 'codemirror/mode/css/css';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/addon/edit/closebrackets';
-import 'codemirror/addon/edit/matchbrackets';
-import 'codemirror/addon/comment/comment';
-import 'codemirror/addon/lint/lint';
-import 'codemirror/addon/lint/javascript-lint';
-import 'codemirror/addon/lint/css-lint';
-import 'codemirror/addon/lint/html-lint';
-import 'codemirror/addon/search/search';
-import 'codemirror/addon/search/searchcursor';
-import 'codemirror/addon/dialog/dialog';
-import 'codemirror/addon/scroll/annotatescrollbar';
-import 'codemirror/addon/search/matchesonscrollbar';
-import Split from 'split.js';
-import * as prettier from 'prettier/standalone';
-import * as parserHtml from 'prettier/plugins/html';
-import * as parserCss from 'prettier/plugins/postcss';
-import * as parserFlow from 'prettier/plugins/flow';
-import * as prettierPluginEstree from "prettier/plugins/estree";
-import { ModuleBlock } from 'typescript';
-import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
-import { copyToClipboard } from './utils';
-
-interface CodeMirrorInstance {
-    (element: HTMLElement, options?: EditorConfiguration): Editor;
-}
-
-type CodeMirrorEditor = Editor;
-
-interface CodeMirrorEditorConfig extends EditorConfiguration {
-    lint?: boolean | {
-        async?: boolean;
-        [key: string]: any;
-    };
-}
-
+// Interfaces
 interface Editors {
-    html: CodeMirrorEditor;
-    css: CodeMirrorEditor;
-    js: CodeMirrorEditor;
-    [key: string]: CodeMirrorEditor;
+    html: EditorView;
+    css: EditorView;
+    js: EditorView;
+    [key: string]: EditorView;
 }
 
 interface State {
@@ -75,8 +55,8 @@ interface State {
 }
 
 interface ConsoleMessage {
-    type: 'console';
-    level: 'log' | 'error' | 'warn' | 'info';
+    type: "console";
+    level: "log" | "error" | "warn" | "info";
     data: any[];
     timestamp: string;
 }
@@ -85,39 +65,38 @@ interface StackInfo {
     stack?: string;
 }
 
-// Update variable declarations with type assertions
-let editors: Editors = {
-    html: null as unknown as CodeMirrorEditor,
-    css: null as unknown as CodeMirrorEditor,
-    js: null as unknown as CodeMirrorEditor
+// Global variables
+export let editors: Editors = {
+    html: null as any, // Placeholder, initialized in initializeEditors
+    css: null as any,
+    js: null as any,
 };
 
 const state: State = {
-    html: '',
-    css: '',
-    js: '',
-    activeTab: 'html',
-    activeOutput: 'preview',
-    splitSizes: [50, 50]
+    html: "",
+    css: "",
+    js: "",
+    activeTab: "html",
+    activeOutput: "preview",
+    splitSizes: [50, 50],
 };
 
 // Register Prettier plugins
 const plugins = [parserHtml, parserCss, parserFlow];
 window.prettierPlugins = plugins;
 
-// Global variables with type assertions
-let currentTab: string = 'html';
-let currentOutput: string = 'preview';
-let isDarkMode: boolean = localStorage.getItem('darkMode') === 'true';
-let isAutoRun: boolean = localStorage.getItem('autoRun') === 'true';
-let splitInstance: Split.Instance; // Add Split instance variable
-const consoleOutput = document.getElementById('console') as HTMLDivElement;
-const loadingEl = document.getElementById('loading') as HTMLDivElement;
-const errorEl = document.getElementById('error-message') as HTMLDivElement;
-const preview = document.getElementById('preview') as HTMLIFrameElement;
+let currentTab: string = "html";
+let currentOutput: string = "preview";
+let isDarkMode: boolean = localStorage.getItem("darkMode") === "true";
+let isAutoRun: boolean = localStorage.getItem("autoRun") === "true";
+let splitInstance: Split.Instance;
+const consoleOutput = document.getElementById("console") as HTMLDivElement;
+const loadingEl = document.getElementById("loading") as HTMLDivElement;
+const errorEl = document.getElementById("error-message") as HTMLDivElement;
+const preview = document.getElementById("preview") as HTMLIFrameElement;
 
 if (!consoleOutput || !loadingEl || !errorEl || !preview) {
-    throw new Error('Required DOM elements not found');
+    throw new Error("Required DOM elements not found");
 }
 
 // Console interceptor
@@ -146,12 +125,11 @@ function initializeSplit() {
         splitInstance.destroy();
     }
 
-    const elements = ['#editor-panel', '#output-panel'];
-    const direction = window.innerWidth <= 768 ? 'vertical' : 'horizontal';
-    
-    // Make sure the elements exist and are visible
-    if (!elements.every(id => document.querySelector(id))) {
-        console.error('Split.js elements not found');
+    const elements = ["#editor-panel", "#output-panel"];
+    const direction = window.innerWidth <= 768 ? "vertical" : "horizontal";
+
+    if (!elements.every((id) => document.querySelector(id))) {
+        console.error("Split.js elements not found");
         return;
     }
 
@@ -163,51 +141,45 @@ function initializeSplit() {
         dragInterval: 1,
         direction,
         elementStyle: (dimension, size, gutterSize) => ({
-            'flex-basis': `calc(${size}% - ${gutterSize}px)`,
+            "flex-basis": `calc(${size}% - ${gutterSize}px)`,
         }),
         gutterStyle: (dimension, gutterSize) => ({
-            'flex-basis': `${gutterSize}px`,
+            "flex-basis": `${gutterSize}px`,
         }),
-        onDragStart: function() {
-            document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+        onDragStart: function () {
+            document.body.style.cursor = direction === "horizontal" ? "col-resize" : "row-resize";
         },
-        onDrag: function() {
-            // Ensure CodeMirror updates its dimensions during drag
-            Object.values(editors).forEach(editor => editor.refresh());
+        onDrag: function () {
+            Object.values(editors).forEach((editor) => editor.requestMeasure());
         },
-        onDragEnd: function(sizes) {
-            document.body.style.cursor = '';
+        onDragEnd: function (sizes) {
+            document.body.style.cursor = "";
             state.splitSizes = sizes;
             saveState();
-            // Final refresh of editors
-            Object.values(editors).forEach(editor => editor.refresh());
-        }
+            Object.values(editors).forEach((editor) => editor.requestMeasure());
+        },
     });
 
-    // Trigger initial refresh of editors
     setTimeout(() => {
-        Object.values(editors).forEach(editor => editor.refresh());
+        Object.values(editors).forEach((editor) => editor.requestMeasure());
     }, 0);
 }
 
-// Handle window resize with proper cleanup
+// Handle window resize
 let resizeTimeout: number;
 const handleResize = () => {
     if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);
     }
     resizeTimeout = window.setTimeout(() => {
-        // Always re-initialize on resize to ensure proper direction
         initializeSplit();
     }, 250);
 };
 
-// Clean up previous listener if it exists
-window.removeEventListener('resize', handleResize);
-window.addEventListener('resize', handleResize);
+window.removeEventListener("resize", handleResize);
+window.addEventListener("resize", handleResize);
 
-// Clean up Split.js instance when the page is unloaded
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
     if (splitInstance) {
         splitInstance.destroy();
     }
@@ -216,186 +188,133 @@ window.addEventListener('beforeunload', () => {
 // Add global keyboard shortcut handler for search
 function addGlobalSearchShortcuts() {
     const preventDefault = (e: KeyboardEvent) => {
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "h")) {
             e.preventDefault();
             e.stopPropagation();
-            toggleSearch(e.key === 'f' ? 'find' : 'replace');
+            toggleSearch(e.key === "f" ? "find" : "replace");
         }
     };
-    window.addEventListener('keydown', preventDefault, true);
+    window.addEventListener("keydown", preventDefault, true);
 }
 
-// Initialize editors
 // Initialize search controls
 function initializeSearchControls(tabsContainer: Element): void {
-    const searchControls = document.createElement('div');
-    searchControls.className = 'search-controls';
+    const searchControls = document.createElement("div");
+    searchControls.className = "search-controls";
 
-    const searchBtn = document.createElement('button');
-    searchBtn.className = 'search-btn';
+    const searchBtn = document.createElement("button");
+    searchBtn.className = "search-btn";
     searchBtn.innerHTML = '<i class="fas fa-search"></i>';
-    searchBtn.title = 'Search (Ctrl+F)';
-    searchBtn.onclick = () => toggleSearch('find');
+    searchBtn.title = "Search (Ctrl+F)";
+    searchBtn.onclick = () => toggleSearch("find");
 
-    const replaceBtn = document.createElement('button');
-    replaceBtn.className = 'replace-btn';
+    const replaceBtn = document.createElement("button");
+    replaceBtn.className = "replace-btn";
     replaceBtn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
-    replaceBtn.title = 'Replace (Ctrl+H)';
-    replaceBtn.onclick = () => toggleSearch('replace');
+    replaceBtn.title = "Replace (Ctrl+H)";
+    replaceBtn.onclick = () => toggleSearch("replace");
 
     searchControls.appendChild(searchBtn);
     searchControls.appendChild(replaceBtn);
     tabsContainer.appendChild(searchControls);
 }
 
+// Initialize editors
 function initializeEditors(): void {
-    const htmlContainer = document.getElementById('html-editor-container');
-    const cssContainer = document.getElementById('css-editor-container');
-    const jsContainer = document.getElementById('js-editor-container');
+    const htmlContainer = document.getElementById("html-editor-container");
+    const cssContainer = document.getElementById("css-editor-container");
+    const jsContainer = document.getElementById("js-editor-container");
 
     if (!htmlContainer || !cssContainer || !jsContainer) {
-        throw new Error('Editor containers not found');
+        throw new Error("Editor containers not found");
     }
 
-    const cm = CodeMirror as unknown as CodeMirrorInstance;
-
-    const commonOptions = {
-        theme: isDarkMode ? 'monokai' : 'default',
-        lineNumbers: true,
-        indentUnit: 2,
-        tabSize: 2,
-        indentWithTabs: false,
-        lineWrapping: true,
-        extraKeys: {
-            'Tab': (cm: Editor) => { cm.execCommand('indentMore'); },
-            'Shift-Tab': (cm: Editor) => { cm.execCommand('indentLess'); },
-            'Ctrl-Enter': (cm: Editor) => { runCode(); },
-            'Ctrl-F': (cm: Editor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                const isFind = existingDialog?.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
-                if (existingDialog && isFind) {
-                    existingDialog.classList.remove('visible');
-                    setTimeout(() => {
-                        cm.execCommand('clearSearch');
-                        existingDialog.remove();
-                    }, 200);
-                } else {
-                    toggleSearch('find');
+    const commonExtensions = [
+        basicSetup,
+        closeBrackets(),
+        autocompletion(),
+        lintGutter(),
+        searchKeymap,
+        commentKeymap,
+        EditorView.theme({}, { dark: isDarkMode }),
+        EditorView.lineWrapping,
+        EditorView.updateListener.of((update) => {
+            if (isAutoRun && update.docChanged) {
+                debounce(runCode, 1000)();
+            }
+        }),
+        EditorView.domEventHandlers({
+            keydown(event, view) {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                    runCode();
+                    return true;
                 }
-            },
-            'Cmd-F': (cm: Editor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                const isFind = existingDialog?.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
-                if (existingDialog && isFind) {
-                    existingDialog.classList.remove('visible');
-                    setTimeout(() => {
-                        cm.execCommand('clearSearch');
-                        existingDialog.remove();
-                    }, 200);
-                } else {
-                    toggleSearch('find');
+                if ((event.ctrlKey || event.metaKey) && event.key === "/") {
+                    // Toggle comment
+                    // Note: You may need to import and use `toggleComment` from "@codemirror/commands"
+                    return true;
                 }
+                return false;
             },
-            'Ctrl-H': (cm: Editor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
-                    if (isReplace) {
-                        // If Replace is open, close it (do not reopen)
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Find is open, close and open Replace
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('replace');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Replace
-                    toggleSearch('replace');
-                }
-            },
-            'Cmd-H': (cm: Editor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
-                    if (isReplace) {
-                        // If Replace is open, close it (do not reopen)
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Find is open, close and open Replace
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('replace');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Replace
-                    toggleSearch('replace');
-                }
-            },
-            'Ctrl-/': 'toggleComment',
-            'Cmd-/': 'toggleComment'
-        },
-    };
+        }),
+    ];
 
-    editors.html = cm(htmlContainer, { ...commonOptions, mode: 'htmlmixed' });
-    editors.css = cm(cssContainer, { ...commonOptions, mode: 'css' });
-    editors.js = cm(jsContainer, { ...commonOptions, mode: 'javascript', lint: true });
+    editors.html = new EditorView({
+        state: EditorState.create({
+            doc: state.html,
+            extensions: [...commonExtensions, html()],
+        }),
+        parent: htmlContainer,
+    });
 
-    // Auto-run on change
-    if (isAutoRun) {
-        Object.values(editors).forEach(editor => {
-            editor.on('change', debounce(runCode, 1000));
-        });
-    }
+    editors.css = new EditorView({
+        state: EditorState.create({
+            doc: state.css,
+            extensions: [...commonExtensions, css()],
+        }),
+        parent: cssContainer,
+    });
 
-    // Initialize Split.js
+    editors.js = new EditorView({
+        state: EditorState.create({
+            doc: state.js,
+            extensions: [
+                ...commonExtensions,
+                javascript(),
+                linter((view) => {
+                    // Add JavaScript linting logic here if needed (e.g., ESLint)
+                    return [];
+                }),
+            ],
+        }),
+        parent: jsContainer,
+    });
+
     initializeSplit();
-
-    // Load state
     loadState();
     updateAutoRunStatus();
     if (isDarkMode) {
-        document.body.classList.add('dark-mode');
+        document.body.classList.add("dark-mode");
         updateThemeIcon();
     }
 }
 
 // Console message handling
-window.addEventListener('message', (event) => {
-    if (event.data.type === 'console') {
-        const entry = document.createElement('div');
-        entry.className = `console-entry ${!activeFilters.has(event.data.level) ? 'filtered' : ''}`;
+window.addEventListener("message", (event) => {
+    if (event.data.type === "console") {
+        const entry = document.createElement("div");
+        entry.className = `console-entry ${!activeFilters.has(event.data.level) ? "filtered" : ""}`;
 
-        // Create timestamp
-        const timestamp = document.createElement('span');
-        timestamp.className = 'timestamp';
+        const timestamp = document.createElement("span");
+        timestamp.className = "timestamp";
         timestamp.textContent = new Date(event.data.timestamp).toLocaleTimeString();
 
-        // Create message
-        const message = document.createElement('span');
+        const message = document.createElement("span");
         message.className = `console-${event.data.level}`;
         if (event.data.data && event.data.data.length) {
-            event.data.data.forEach((item: any, i: any) => {
-                if (i > 0) message.appendChild(document.createTextNode(' '));
-                if (item && typeof item === 'object') {
+            event.data.data.forEach((item: any, i: number) => {
+                if (i > 0) message.appendChild(document.createTextNode(" "));
+                if (item && typeof item === "object") {
                     message.appendChild(renderObject(item));
                 } else {
                     message.appendChild(document.createTextNode(String(item)));
@@ -403,23 +322,21 @@ window.addEventListener('message', (event) => {
             });
         }
 
-        // Add stack trace if exists
         if (event.data.data[1]?.stack) {
-            const stack = document.createElement('div');
-            stack.className = 'console-stack';
+            const stack = document.createElement("div");
+            stack.className = "console-stack";
             stack.textContent = event.data.data[1].stack;
-            stack.addEventListener('click', () => stack.classList.toggle('expanded'));
+            stack.addEventListener("click", () => stack.classList.toggle("expanded"));
             message.appendChild(stack);
         }
 
-        // Add copy button
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "copy-btn";
         copyBtn.innerHTML = '<i class="far fa-copy"></i>';
-        copyBtn.addEventListener('click', () => {
-            const text = event.data.data.map((item: any) => 
-                typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)
-            ).join(' ');
+        copyBtn.addEventListener("click", () => {
+            const text = event.data.data
+                .map((item: any) => (typeof item === "object" ? JSON.stringify(item, null, 2) : String(item)))
+                .join(" ");
             copyToClipboard(text);
             copyBtn.innerHTML = '<i class="fas fa-check"></i>';
             setTimeout(() => {
@@ -428,7 +345,7 @@ window.addEventListener('message', (event) => {
         });
 
         entry.appendChild(timestamp);
-        entry.appendChild(document.createTextNode(' '));
+        entry.appendChild(document.createTextNode(" "));
         entry.appendChild(message);
         entry.appendChild(copyBtn);
         consoleOutput.appendChild(entry);
@@ -437,39 +354,39 @@ window.addEventListener('message', (event) => {
 });
 
 // Render objects with depth limit and circular reference handling
-function renderObject(obj: any, level = 0, visited = new WeakSet()) {
-    if (obj === null) return document.createTextNode('null');
-    if (typeof obj !== 'object') return document.createTextNode(String(obj));
-    if (visited.has(obj)) return document.createTextNode('[Circular]');
-    if (level > 3) return document.createTextNode('[...]');
+function renderObject(obj: any, level = 0, visited = new WeakSet()): Node {
+    if (obj === null) return document.createTextNode("null");
+    if (typeof obj !== "object") return document.createTextNode(String(obj));
+    if (visited.has(obj)) return document.createTextNode("[Circular]");
+    if (level > 3) return document.createTextNode("[...]");
     visited.add(obj);
 
-    const container = document.createElement('span');
+    const container = document.createElement("span");
     if (obj instanceof Error) {
-        const errorEl = document.createElement('span');
-        errorEl.className = 'console-error';
+        const errorEl = document.createElement("span");
+        errorEl.className = "console-error";
         errorEl.textContent = `${obj.name}: ${obj.message}`;
-        if (obj.stack) errorEl.textContent += `\n${obj.stack.split('\n').slice(1).join('\n')}`;
+        if (obj.stack) errorEl.textContent += `\n${obj.stack.split("\n").slice(1).join("\n")}`;
         container.appendChild(errorEl);
         return container;
     }
 
-    const preview = document.createElement('span');
-    preview.className = 'console-object';
-    preview.textContent = Array.isArray(obj) ? `Array(${obj.length})` : '{...}';
-    const content = document.createElement('div');
-    content.className = 'console-object-content';
+    const preview = document.createElement("span");
+    preview.className = "console-object";
+    preview.textContent = Array.isArray(obj) ? `Array(${obj.length})` : "{...}";
+    const content = document.createElement("div");
+    content.className = "console-object-content";
 
     Object.entries(obj).forEach(([key, value]) => {
-        const prop = document.createElement('div');
+        const prop = document.createElement("div");
         prop.textContent = `${key}: `;
         prop.appendChild(renderObject(value, level + 1, visited));
         content.appendChild(prop);
     });
 
-    preview.addEventListener('click', (e) => {
+    preview.addEventListener("click", (e) => {
         e.stopPropagation();
-        preview.classList.toggle('expanded');
+        preview.classList.toggle("expanded");
     });
 
     container.appendChild(preview);
@@ -477,29 +394,35 @@ function renderObject(obj: any, level = 0, visited = new WeakSet()) {
     return container;
 }
 
-// Save state with fallback
+// Save state
 function saveState() {
-    state.html = editors.html.getValue();
-    state.css = editors.css.getValue();
-    state.js = editors.js.getValue();
+    state.html = editors.html.state.doc.toString();
+    state.css = editors.css.state.doc.toString();
+    state.js = editors.js.state.doc.toString();
     state.activeTab = currentTab;
     state.activeOutput = currentOutput;
     try {
-        localStorage.setItem('htmlRunnerState', JSON.stringify(state));
+        localStorage.setItem("htmlRunnerState", JSON.stringify(state));
     } catch (e: any) {
-        showError('Failed to save state: ' + e.message);
+        showError("Failed to save state: " + e.message);
     }
 }
 
-// Load state with fallback
+// Load state
 function loadState() {
     try {
-        const savedState = localStorage.getItem('htmlRunnerState');
+        const savedState = localStorage.getItem("htmlRunnerState");
         if (savedState) {
             const parsed = JSON.parse(savedState);
-            editors.html.setValue(parsed.html || '');
-            editors.css.setValue(parsed.css || '');
-            editors.js.setValue(parsed.js || '');
+            editors.html.dispatch({
+                changes: { from: 0, to: editors.html.state.doc.length, insert: parsed.html || "" },
+            });
+            editors.css.dispatch({
+                changes: { from: 0, to: editors.css.state.doc.length, insert: parsed.css || "" },
+            });
+            editors.js.dispatch({
+                changes: { from: 0, to: editors.js.state.doc.length, insert: parsed.js || "" },
+            });
             if (parsed.activeTab) switchTab(parsed.activeTab);
             if (parsed.activeOutput) switchOutput(parsed.activeOutput);
             if (parsed.splitSizes) state.splitSizes = parsed.splitSizes;
@@ -508,7 +431,7 @@ function loadState() {
             resetCode();
         }
     } catch (e: any) {
-        showError('Failed to load state: ' + e.message);
+        showError("Failed to load state: " + e.message);
         resetCode();
     }
 }
@@ -518,9 +441,9 @@ function runCode() {
     showLoading();
     clearConsole();
     try {
-        const html = editors.html.getValue();
-        const css = editors.css.getValue();
-        const js = editors.js.getValue();
+        const html = editors.html.state.doc.toString();
+        const css = editors.css.state.doc.toString();
+        const js = editors.js.state.doc.toString();
 
         // Pre-parse JS
         try {
@@ -535,18 +458,18 @@ function runCode() {
         const isFullHtml = /<html[\s>]|<!doctype html/i.test(html);
         if (isFullHtml) {
             const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            if (!doc.head) doc.documentElement.insertBefore(document.createElement('head'), doc.body);
-            const script = document.createElement('script');
+            const doc = parser.parseFromString(html, "text/html");
+            if (!doc.head) doc.documentElement.insertBefore(document.createElement("head"), doc.body);
+            const script = document.createElement("script");
             script.textContent = consoleInterceptor;
             doc.head.appendChild(script);
             if (css.trim()) {
-                const style = document.createElement('style');
+                const style = document.createElement("style");
                 style.textContent = css;
                 doc.head.appendChild(style);
             }
             if (js.trim()) {
-                const script = document.createElement('script');
+                const script = document.createElement("script");
                 script.textContent = js;
                 doc.body.appendChild(script);
             }
@@ -554,22 +477,29 @@ function runCode() {
         } else {
             docContent = [
                 '<!DOCTYPE html><html><head><meta charset="UTF-8">',
-                '<style>', css, '</style>',
-                '<script>', consoleInterceptor, '<\/script>',
-                '</head><body>', html, '</body>',
-                '<script>', js, '<\/script></html>'
-            ].join('');
+                "<style>",
+                css,
+                "</style>",
+                "<script>",
+                consoleInterceptor,
+                "</script>",
+                "</head><body>",
+                html,
+                "</body>",
+                "<script>",
+                js,
+                "</script></html>",
+            ].join("");
         }
 
-        const blob = new Blob([docContent], { type: 'text/html; charset=utf-8' });
+        const blob = new Blob([docContent], { type: "text/html; charset=utf-8" });
         const url = URL.createObjectURL(blob);
-        const preview = document.getElementById('preview');
         if (!preview || !(preview instanceof HTMLIFrameElement)) {
-            throw new Error('Preview element not found or is not an iframe');
+            throw new Error("Preview element not found or is not an iframe");
         }
         preview.src = url;
-        preview.addEventListener('load', () => URL.revokeObjectURL(url));
-        switchOutput('preview');
+        preview.addEventListener("load", () => URL.revokeObjectURL(url));
+        switchOutput("preview");
         saveState();
     } catch (error: any) {
         showError(`Error running code: ${error.message}`);
@@ -581,33 +511,39 @@ function runCode() {
 // Format code
 async function formatCode() {
     try {
-        const formattedHtml = await prettier.format(editors.html.getValue(), { 
-            parser: 'html',
+        const formattedHtml = await prettier.format(editors.html.state.doc.toString(), {
+            parser: "html",
             plugins: [parserHtml],
             printWidth: 100,
             tabWidth: 2,
-            htmlWhitespaceSensitivity: 'css'
+            htmlWhitespaceSensitivity: "css",
         });
-        const formattedCss = await prettier.format(editors.css.getValue(), { 
-            parser: 'css',
+        const formattedCss = await prettier.format(editors.css.state.doc.toString(), {
+            parser: "css",
             plugins: [parserCss],
             printWidth: 100,
-            tabWidth: 2
+            tabWidth: 2,
         });
-        const formattedJs = await prettier.format(editors.js.getValue(), { 
-            parser: 'flow',
+        const formattedJs = await prettier.format(editors.js.state.doc.toString(), {
+            parser: "flow",
             plugins: [parserFlow, (prettierPluginEstree as any).default || prettierPluginEstree],
             printWidth: 100,
             tabWidth: 2,
             semi: true,
             singleQuote: true,
-            trailingComma: 'es5',
-            bracketSpacing: true
+            trailingComma: "es5",
+            bracketSpacing: true,
         });
-        
-        editors.html.setValue(formattedHtml);
-        editors.css.setValue(formattedCss);
-        editors.js.setValue(formattedJs);
+
+        editors.html.dispatch({
+            changes: { from: 0, to: editors.html.state.doc.length, insert: formattedHtml },
+        });
+        editors.css.dispatch({
+            changes: { from: 0, to: editors.css.state.doc.length, insert: formattedCss },
+        });
+        editors.js.dispatch({
+            changes: { from: 0, to: editors.js.state.doc.length, insert: formattedJs },
+        });
         saveState();
     } catch (error: any) {
         showError(`Error formatting code: ${error.message}`);
@@ -617,41 +553,38 @@ async function formatCode() {
 // Switch editor tab
 function switchTab(tab: string): void {
     currentTab = tab;
-    // Hide all containers and remove active class from all tabs
-    document.querySelectorAll('.editor-container').forEach(c => {
+    document.querySelectorAll(".editor-container").forEach((c) => {
         const container = c as HTMLElement;
-        container.style.display = 'none';
+        container.style.display = "none";
     });
-    document.querySelectorAll('.editor-tabs .tab').forEach(t => {
-        t.classList.remove('active');
+    document.querySelectorAll(".editor-tabs .tab").forEach((t) => {
+        t.classList.remove("active");
     });
-    
+
     const editorContainer = document.getElementById(`${tab}-editor-container`);
     const tabElement = document.querySelector(`.editor-tabs .tab[data-tab="${tab}"]`);
-    
+
     if (!editorContainer || !tabElement || !editors[tab]) {
         console.error(`Invalid tab: ${tab}`);
         return;
     }
 
-    editorContainer.style.display = 'block';
-    tabElement.classList.add('active');
+    editorContainer.style.display = "block";
+    tabElement.classList.add("active");
     editors[tab].focus();
 
-    // Ensure proper rendering after tab switch
     setTimeout(() => {
-        // Refresh all editors to ensure proper sizing
-        Object.values(editors).forEach(editor => editor.refresh());
+        Object.values(editors).forEach((editor) => editor.requestMeasure());
     }, 0);
-    
+
     saveState();
 }
 
 // Switch output tab
 function switchOutput(output: string): void {
     currentOutput = output;
-    const previewEl = document.getElementById('preview');
-    const consoleEl = document.getElementById('console');
+    const previewEl = document.getElementById("preview");
+    const consoleEl = document.getElementById("console");
     const targetEl = document.getElementById(output);
     const tabEl = document.querySelector(`.output-tabs .tab[data-output="${output}"]`);
 
@@ -660,44 +593,41 @@ function switchOutput(output: string): void {
         return;
     }
 
-    previewEl.classList.remove('active');
-    consoleEl.classList.remove('active');
-    targetEl.classList.add('active');
-    document.querySelectorAll('.output-tabs .tab').forEach(t => t.classList.remove('active'));
-    tabEl.classList.add('active');
+    previewEl.classList.remove("active");
+    consoleEl.classList.remove("active");
+    targetEl.classList.add("active");
+    document.querySelectorAll(".output-tabs .tab").forEach((t) => t.classList.remove("active"));
+    tabEl.classList.add("active");
     saveState();
 }
 
 // Toggle auto-run
 function toggleAutoRun(): void {
     isAutoRun = !isAutoRun;
-    localStorage.setItem('autoRun', String(isAutoRun));
-    Object.values(editors).forEach(editor => {
-        const handler = debounce(runCode, 1000);
-        editor.off('change', handler);
-        if (isAutoRun) {
-            editor.on('change', handler);
-        }
-    });
+    localStorage.setItem("autoRun", String(isAutoRun));
     updateAutoRunStatus();
 }
 
 function updateAutoRunStatus(): void {
-    const statusEl = document.getElementById('auto-run-status');
+    const statusEl = document.getElementById("auto-run-status");
     if (statusEl) {
-        statusEl.textContent = isAutoRun ? 'On' : 'Off';
+        statusEl.textContent = isAutoRun ? "On" : "Off";
     }
 }
 
 // Clear console
 function clearConsole() {
-    consoleOutput.innerHTML = '';
+    consoleOutput.innerHTML = "";
 }
 
 // Reset code
 function resetCode() {
-    if (confirm('Are you sure you want to reset all code?')) {
-        editors.html.setValue(`<!DOCTYPE html>
+    if (confirm("Are you sure you want to reset all code?")) {
+        editors.html.dispatch({
+            changes: {
+                from: 0,
+                to: editors.html.state.doc.length,
+                insert: `<!DOCTYPE html>
 <html>
 <head>
 <title>My Page</title>
@@ -709,8 +639,14 @@ function resetCode() {
 <p>This is a demo page.</p>
 <button onclick="testFunction()">Click me!</button>
 </body>
-</html>`);
-        editors.css.setValue(`body {
+</html>`,
+            },
+        });
+        editors.css.dispatch({
+            changes: {
+                from: 0,
+                to: editors.css.state.doc.length,
+                insert: `body {
 font-family: Arial, sans-serif;
 margin: 20px;
 line-height: 1.6;
@@ -726,14 +662,22 @@ font-size: 16px;
 }
 button:hover {
 background: #1976D2;
-}`);
-        editors.js.setValue(`function testFunction() {
+}`,
+            },
+        });
+        editors.js.dispatch({
+            changes: {
+                from: 0,
+                to: editors.js.state.doc.length,
+                insert: `function testFunction() {
 console.log('Button clicked!');
 console.warn('This is a warning');
 console.error('This is an error');
 console.info('This is an info');
 console.log('Object:', { name: 'Alice', age: 25, hobbies: ['coding', 'reading'] });
-}`);
+}`,
+            },
+        });
         runCode();
         saveState();
     }
@@ -742,65 +686,70 @@ console.log('Object:', { name: 'Alice', age: 25, hobbies: ['coding', 'reading'] 
 // Toggle dark mode
 function toggleDarkMode(): void {
     isDarkMode = !isDarkMode;
-    document.body.classList.toggle('dark-mode');
-    localStorage.setItem('darkMode', String(isDarkMode));
-    Object.values(editors).forEach(editor => {
-        editor.setOption('theme', isDarkMode ? 'monokai' : 'default');
+    document.body.classList.toggle("dark-mode");
+    localStorage.setItem("darkMode", String(isDarkMode));
+    Object.values(editors).forEach((editor) => {
+        editor.dispatch({
+            effects: EditorView.theme({}, { dark: isDarkMode }),
+        });
     });
     updateThemeIcon();
 }
 
 function updateThemeIcon(): void {
-    const icon = document.querySelector('.theme-toggle i');
-    const label = document.querySelector('.theme-toggle span');
+    const icon = document.querySelector(".theme-toggle i");
+    const label = document.querySelector(".theme-toggle span");
     if (label) {
-        label.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+        label.textContent = isDarkMode ? "Light Mode" : "Dark Mode";
     }
     if (icon) {
-        icon.classList.toggle('fa-moon', !isDarkMode);
-        icon.classList.toggle('fa-sun', isDarkMode);
+        icon.classList.toggle("fa-moon", !isDarkMode);
+        icon.classList.toggle("fa-sun", isDarkMode);
     }
 }
 
 // Export editors' content as ZIP
 async function exportAsZip() {
     const zip = new JSZip();
-    zip.file('index.html', editors.html.getValue());
-    zip.file('styles.css', editors.css.getValue());
-    zip.file('script.js', editors.js.getValue());
-    const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, 'htmlrunner-export.zip');
+    zip.file("index.html", editors.html.state.doc.toString());
+    zip.file("styles.css", editors.css.state.doc.toString());
+    zip.file("script.js", editors.js.state.doc.toString());
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "htmlrunner-export.zip");
 }
 
 // Copy console content
 function copyAllConsole(): void {
     const entries = Array.from(consoleOutput.children);
-    const text = entries.map(entry => {
-        const timestamp = entry.querySelector('.timestamp')?.textContent || '';
-        const message = Array.from(entry.querySelectorAll('.console-log, .console-error, .console-warn, .console-info'))
-            .map(el => el.textContent)
-            .join('');
-        return `${timestamp} ${message}`;
-    }).join('\n');
+    const text = entries
+        .map((entry) => {
+            const timestamp = entry.querySelector(".timestamp")?.textContent || "";
+            const message = Array.from(
+                entry.querySelectorAll(".console-log, .console-error, .console-warn, .console-info")
+            )
+                .map((el) => el.textContent)
+                .join("");
+            return `${timestamp} ${message}`;
+        })
+        .join("\n");
     copyToClipboard(text);
 }
 
 // Copy editor content
 function copyEditorContent(editor: string): void {
-    const content = editors[editor].getValue();
+    const content = editors[editor].state.doc.toString();
     copyToClipboard(content);
 }
 
 // Initialize copy buttons
 function initializeCopyButtons(): void {
-    // Add copy buttons to editors
-    ['html', 'css', 'js'].forEach(editorType => {
+    ["html", "css", "js"].forEach((editorType) => {
         const container = document.getElementById(`${editorType}-editor-container`);
         if (container) {
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-btn';
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "copy-btn";
             copyBtn.innerHTML = '<i class="far fa-copy"></i>';
-            copyBtn.addEventListener('click', () => {
+            copyBtn.addEventListener("click", () => {
                 copyEditorContent(editorType);
                 copyBtn.innerHTML = '<i class="fas fa-check"></i>';
                 setTimeout(() => {
@@ -811,16 +760,15 @@ function initializeCopyButtons(): void {
         }
     });
 
-    // Add copy all button to console
     const consoleTab = document.querySelector('.output-tabs .tab[data-output="console"]');
     if (consoleTab) {
-        const copyAllBtn = document.createElement('button');
-        copyAllBtn.className = 'copy-btn';
-        copyAllBtn.style.position = 'static';
-        copyAllBtn.style.marginLeft = 'auto';
-        copyAllBtn.style.opacity = '1';
+        const copyAllBtn = document.createElement("button");
+        copyAllBtn.className = "copy-btn";
+        copyAllBtn.style.position = "static";
+        copyAllBtn.style.marginLeft = "auto";
+        copyAllBtn.style.opacity = "1";
         copyAllBtn.innerHTML = '<i class="far fa-copy"></i> Copy All';
-        copyAllBtn.addEventListener('click', () => {
+        copyAllBtn.addEventListener("click", () => {
             copyAllConsole();
             copyAllBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
             setTimeout(() => {
@@ -832,35 +780,35 @@ function initializeCopyButtons(): void {
 }
 
 // Log filter state
-let activeFilters = new Set(['log', 'error', 'warn', 'info']);
+let activeFilters = new Set(["log", "error", "warn", "info"]);
 
-function toggleLogFilter(type: 'log' | 'error' | 'warn' | 'info'): void {
+function toggleLogFilter(type: "log" | "error" | "warn" | "info"): void {
     const button = document.querySelector(`.filter-toggle.${type}`);
     if (button) {
-        const isActive = button.classList.contains('active');
+        const isActive = button.classList.contains("active");
         if (isActive) {
             activeFilters.delete(type);
-            button.classList.remove('active');
+            button.classList.remove("active");
         } else {
             activeFilters.add(type);
-            button.classList.add('active');
+            button.classList.add("active");
         }
-        localStorage.setItem('logFilters', JSON.stringify(Array.from(activeFilters)));
+        localStorage.setItem("logFilters", JSON.stringify(Array.from(activeFilters)));
         applyLogFilters();
     }
 }
 
 function applyLogFilters(): void {
-    document.querySelectorAll('.console-entry').forEach(entry => {
-        const messageElement = entry.querySelector('.console-log, .console-error, .console-warn, .console-info');
+    document.querySelectorAll(".console-entry").forEach((entry) => {
+        const messageElement = entry.querySelector(".console-log, .console-error, .console-warn, .console-info");
         if (messageElement) {
             const logType = Array.from(messageElement.classList)
-                .find(cls => cls.startsWith('console-'))
-                ?.replace('console-', '');
+                .find((cls) => cls.startsWith("console-"))
+                ?.replace("console-", "");
             if (logType && !activeFilters.has(logType)) {
-                entry.classList.add('filtered');
+                entry.classList.add("filtered");
             } else {
-                entry.classList.remove('filtered');
+                entry.classList.remove("filtered");
             }
         }
     });
@@ -868,130 +816,92 @@ function applyLogFilters(): void {
 
 function initializeLogFilters(): void {
     try {
-        const savedFilters = localStorage.getItem('logFilters');
+        const savedFilters = localStorage.getItem("logFilters");
         if (savedFilters) {
             activeFilters = new Set(JSON.parse(savedFilters));
         }
     } catch (e) {
-        console.error('Failed to load log filters:', e);
+        console.error("Failed to load log filters:", e);
     }
 
-    const consoleTab = document.querySelector('.output-tabs');
+    const consoleTab = document.querySelector(".output-tabs");
     if (consoleTab) {
-        const filtersDiv = document.createElement('div');
-        filtersDiv.className = 'console-filters';
-        
-        ['log', 'error', 'warn', 'info'].forEach(type => {
-            const button = document.createElement('button');
-            button.className = `filter-toggle ${type} ${activeFilters.has(type) ? 'active' : ''}`;
+        const filtersDiv = document.createElement("div");
+        filtersDiv.className = "console-filters";
+
+        ["log", "error", "warn", "info"].forEach((type) => {
+            const button = document.createElement("button");
+            button.className = `filter-toggle ${type} ${activeFilters.has(type) ? "active" : ""}`;
             button.innerHTML = `<i class="fas fa-${
-                type === 'log' ? 'terminal' :
-                type === 'error' ? 'times-circle' :
-                type === 'warn' ? 'exclamation-triangle' :
-                'info-circle'
+                type === "log"
+                    ? "terminal"
+                    : type === "error"
+                    ? "times-circle"
+                    : type === "warn"
+                    ? "exclamation-triangle"
+                    : "info-circle"
             }"></i>${type.charAt(0).toUpperCase() + type.slice(1)}`;
             button.onclick = () => toggleLogFilter(type as any);
             filtersDiv.appendChild(button);
         });
-        
+
         consoleTab.insertBefore(filtersDiv, consoleTab.lastElementChild);
     }
 }
 
-// Add search toggle function
-export function toggleSearch(mode: 'find' | 'replace' = 'find'): void {
+// Search toggle function
+export function toggleSearch(mode: "find" | "replace" = "find"): void {
     const editor = editors[currentTab];
     if (editor) {
-        const wrapper = editor.getWrapperElement();
-        const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-
-        if (existingDialog) {
-            const isCurrentReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
-            const currentMode = isCurrentReplace ? 'replace' : 'find';
-            // Always close the current dialog first
-            existingDialog.classList.remove('visible');
-            const closeDialog = () => {
-                editor.execCommand('clearSearch');
-                existingDialog.remove();
-            };
-            // Close dialog with correct behavior
-            if (mode === currentMode) {
-                // If same mode (Find->Find or Replace->Replace), just close
-                setTimeout(closeDialog, 200);
-                return;
-            } else {
-                // If switching modes, always close current and open requested
-                setTimeout(() => {
-                    closeDialog();
-                    openSearchDialog(editor, mode);
-                }, 200);
-            }
+        const searchPanelOpen = editor.state.field(search, false);
+        if (searchPanelOpen) {
+            closeSearchPanel(editor);
         } else {
-            // No dialog exists, simply open new one
-            openSearchDialog(editor, mode);
+            openSearchPanel(editor);
         }
     }
-}
-
-function openSearchDialog(editor: Editor, mode: 'find' | 'replace'): void {
-    editor.execCommand(mode);
-    
-    setTimeout(() => {
-        const dialog = editor.getWrapperElement().querySelector('.CodeMirror-dialog') as HTMLElement;
-        if (dialog) {
-            const tabsBar = document.querySelector('.editor-tabs');
-            if (tabsBar) {
-                dialog.style.zIndex = '5';
-                
-                // Focus the input
-                const input = dialog.querySelector('input');
-                if (input) input.focus();
-                
-                // Trigger animation
-                requestAnimationFrame(() => dialog.classList.add('visible'));
-            }
-        }
-    }, 0);
 }
 
 // Utility functions
-function showLoading() { loadingEl.classList.add('active'); }
-function hideLoading() { loadingEl.classList.remove('active'); }
+function showLoading() {
+    loadingEl.classList.add("active");
+}
+function hideLoading() {
+    loadingEl.classList.remove("active");
+}
 
 function showError(message: string): void {
     errorEl.textContent = message;
-    errorEl.style.display = 'block';
-    setTimeout(() => errorEl.style.display = 'none', 5000);
+    errorEl.style.display = "block";
+    setTimeout(() => (errorEl.style.display = "none"), 5000);
 }
 
 function logConsoleError(message: string, stack: { stack?: string } = {}): void {
-    const entry = document.createElement('div');
-    entry.className = 'console-entry';
-    const timestamp = document.createElement('span');
-    timestamp.className = 'timestamp';
+    const entry = document.createElement("div");
+    entry.className = "console-entry";
+    const timestamp = document.createElement("span");
+    timestamp.className = "timestamp";
     timestamp.textContent = new Date().toLocaleTimeString();
-    const msg = document.createElement('span');
-    msg.className = 'console-error';
+    const msg = document.createElement("span");
+    msg.className = "console-error";
     msg.textContent = message;
     if (stack.stack) {
-        const stackEl = document.createElement('div');
-        stackEl.className = 'console-stack';
+        const stackEl = document.createElement("div");
+        stackEl.className = "console-stack";
         stackEl.textContent = stack.stack;
-        stackEl.addEventListener('click', () => stackEl.classList.toggle('expanded'));
+        stackEl.addEventListener("click", () => stackEl.classList.toggle("expanded"));
         msg.appendChild(stackEl);
     }
     entry.appendChild(timestamp);
-    entry.appendChild(document.createTextNode(' '));
+    entry.appendChild(document.createTextNode(" "));
     entry.appendChild(msg);
     consoleOutput.appendChild(entry);
     consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
-function debounce<T extends (...args: any[]) => any>(
-    func: T,
-    wait: number
-): (...args: Parameters<T>) => void {
+
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
     let timeout: number | undefined;
-    return function(this: any, ...args: Parameters<T>): void {
+    return function (this: any, ...args: Parameters<T>): void {
         if (timeout) window.clearTimeout(timeout);
         timeout = window.setTimeout(() => func.apply(this, args), wait);
     };
@@ -1010,18 +920,17 @@ Object.assign(window, {
     exportAsZip,
     copyAllConsole,
     copyEditorContent,
-    toggleSearch
+    toggleSearch,
 });
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     initializeEditors();
     initializeCopyButtons();
     initializeLogFilters();
     addGlobalSearchShortcuts();
-    
-    // Initialize search controls
-    const editorTabs = document.querySelector('.editor-tabs');
+
+    const editorTabs = document.querySelector(".editor-tabs");
     if (editorTabs) {
         initializeSearchControls(editorTabs);
     }
