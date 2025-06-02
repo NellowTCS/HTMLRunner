@@ -1,5 +1,6 @@
 import { Compartment, EditorState, Extension } from "@codemirror/state";
-import { EditorView, lineNumbers, keymap } from "@codemirror/view";
+import { EditorView, lineNumbers, keymap } from "@codemirror/view"; // Add standardKeymap, defaultKeymap
+import { defaultKeymap, standardKeymap } from "@codemirror/commands";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
@@ -12,6 +13,7 @@ import { toggleSearch } from "./main";
 import { debounce } from "./utils";
 import { saveState } from "./state";
 import { search } from "@codemirror/search";
+import { toggleComment } from "@codemirror/commands"; // Ensure toggleComment is imported
 
 export let isDarkMode: boolean = localStorage.getItem("darkMode") === "true";
 export let isAutoRun: boolean = localStorage.getItem("autoRun") === "true";
@@ -62,6 +64,8 @@ function createEditorConfig(
         ),
         lintGutter(),
         keymap.of([
+          ...standardKeymap, // Add standard keymap
+          ...defaultKeymap, // Add default keymap
           {
             key: "Ctrl-/",
             run: (view: EditorView) => {
@@ -91,6 +95,13 @@ function createEditorConfig(
       ],
     }),
     parent: container,
+  });
+
+  // Prevent Enter from submitting a form
+  view.dom.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.stopPropagation(); // Prevent form submission
+    }
   });
 
   return {

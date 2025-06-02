@@ -498,6 +498,7 @@ Object.assign(window, {
 document.addEventListener("DOMContentLoaded", async () => {
   initializeEditors();
   initializeCopyButtons();
+  initializeSplit();
   updateAutoRunStatus();
   initializeLogFilters();
   addGlobalSearchShortcuts();
