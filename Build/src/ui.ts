@@ -1,19 +1,14 @@
 import {
   editors,
-  darkMode as isDarkMode,
-  autoRun as isAutoRun,
+  isDarkMode,
+  isAutoRun,
   setDarkMode,
   setAutoRun,
 } from "./editor";
 import { saveState } from "./state";
-import { runCode } from "./runner"; // Import runCode
+import { runCode } from "./runner";
 import { debounce } from "./utils";
-import { monokai } from "@uiw/codemirror-theme-monokai";
-import { bbedit } from "@uiw/codemirror-theme-bbedit";
 import { EditorView } from "@codemirror/view";
-import { StateEffect } from "@codemirror/state";
-
-const autoRunEffect = StateEffect.define<boolean>();
 
 export const loadingEl = document.getElementById("loading") as HTMLDivElement;
 export const errorEl = document.getElementById(
@@ -85,21 +80,21 @@ export function switchOutput(output: string): void {
 }
 
 export function toggleAutoRun(): void {
-  setAutoRun(!isAutoRun);
-  localStorage.setItem("autoRun", String(isAutoRun));
+  const newAutoRun = !isAutoRun;
+  setAutoRun(newAutoRun);
+  localStorage.setItem("autoRun", String(newAutoRun));
 
   Object.values(editors).forEach((editor) => {
-    const handler = debounce(runCode, 1000);
-
-    if (isAutoRun) {
-      editor.view.dispatch({
-        effects: [autoRunEffect.of(true)],
-      });
-    } else {
-      editor.view.dispatch({
-        effects: [autoRunEffect.of(false)],
-      });
-    }
+    const listener = newAutoRun
+      ? EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            debounce(runCode, 1000)();
+          }
+        })
+      : [];
+    editor.view.dispatch({
+      effects: editor.autoRunCompartment.reconfigure(listener),
+    });
   });
 
   updateAutoRunStatus();
@@ -116,21 +111,6 @@ export function toggleDarkMode(): void {
   setDarkMode(!isDarkMode);
   document.body.classList.toggle("dark-mode");
   localStorage.setItem("darkMode", String(isDarkMode));
-
-  Object.values(editors).forEach((editor) => {
-    const newTheme = isDarkMode ? monokai : bbedit;
-
-    editor.view.dispatch({
-      effects: [
-        StateEffect.appendConfig.of(
-          EditorView.theme({
-            "&": { backgroundColor: isDarkMode ? "#2e2e2e" : "#fff" },
-          })
-        ),
-      ],
-    });
-  });
-
   updateThemeIcon();
 }
 
