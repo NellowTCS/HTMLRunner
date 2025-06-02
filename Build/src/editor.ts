@@ -1,184 +1,133 @@
-import * as CodeMirror from 'codemirror';
-import { CodeMirrorInstance, CodeMirrorEditor, Editors } from './types';
-import { runCode, formatCode } from './runner';
-import { toggleSearch } from './main';
-import { debounce } from './utils';
-import Split from 'split.js';
-import { state, saveState } from './state';
+import { Compartment, EditorState, Extension } from "@codemirror/state";
+import { EditorView, lineNumbers, keymap } from "@codemirror/view"; // Add standardKeymap, defaultKeymap
+import { defaultKeymap, standardKeymap } from "@codemirror/commands";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { javascript } from "@codemirror/lang-javascript";
+import { linter, lintGutter } from "@codemirror/lint";
+import { monokai } from "@uiw/codemirror-theme-monokai";
+import { bbedit } from "@uiw/codemirror-theme-bbedit";
+import { CodeMirrorEditor, Editors } from "./types";
+import { runCode } from "./runner";
+import { toggleSearch } from "./main";
+import { debounce } from "./utils";
+import { saveState } from "./state";
+import { search } from "@codemirror/search";
+import { toggleComment } from "@codemirror/commands"; // Ensure toggleComment is imported
 
-// Initialize editors
-export let editors: Editors = {
-    html: null as unknown as CodeMirrorEditor,
-    css: null as unknown as CodeMirrorEditor,
-    js: null as unknown as CodeMirrorEditor
+export let isDarkMode: boolean = localStorage.getItem("darkMode") === "true";
+export let isAutoRun: boolean = localStorage.getItem("autoRun") === "true";
+
+export const editors: Editors = {
+  html: null as unknown as CodeMirrorEditor,
+  css: null as unknown as CodeMirrorEditor,
+  js: null as unknown as CodeMirrorEditor,
 };
 
-export let darkMode: boolean = localStorage.getItem('darkMode') === 'true';
-export let autoRun: boolean = localStorage.getItem('autoRun') === 'true';
-
-export function initializeEditors(): void {
-    const htmlContainer = document.getElementById('html-editor-container');
-    const cssContainer = document.getElementById('css-editor-container');
-    const jsContainer = document.getElementById('js-editor-container');
-
-    if (!htmlContainer || !cssContainer || !jsContainer) {
-        throw new Error('Editor containers not found');
-    }
-
-    const cm = CodeMirror as unknown as CodeMirrorInstance;
-
-    editors.html = createEditor(cm, htmlContainer, 'htmlmixed');
-    editors.css = createEditor(cm, cssContainer, 'css');
-    editors.js = createEditor(cm, jsContainer, 'javascript', { lint: true });
-
-    // Auto-run on change
-    if (autoRun) {
-        Object.values(editors).forEach(editor => {
-            editor.on('change', debounce(runCode, 1000));
-        });
-    }
-
-    // Initialize Split.js
-    Split(['#editor-panel', '#output-panel'], {
-        sizes: state.splitSizes || [50, 50],
-        minSize: 200,
-        gutterSize: 8,
-        direction: window.innerWidth <= 768 ? 'vertical' : 'horizontal',
-        onDragEnd: (sizes) => {
-            state.splitSizes = sizes;
-            saveState();
-        }
-    });
-}
-
-function createEditor(cm: CodeMirrorInstance, container: HTMLElement, mode: string, additionalOptions = {}): CodeMirrorEditor {
-    return cm(container, {
-        mode,
-        theme: darkMode ? 'monokai' : 'default',
-        lineNumbers: true,
-        indentUnit: 2,
-        tabSize: 2,
-        indentWithTabs: false,
-        lineWrapping: true,
-        extraKeys: {
-            'Tab': (cm: CodeMirrorEditor) => cm.execCommand('indentMore'),
-            'Shift-Tab': (cm: CodeMirrorEditor) => cm.execCommand('indentLess'),
-            'Ctrl-Enter': () => runCode(),
-            'Ctrl-F': (cm: CodeMirrorEditor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isFind = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
-                    if (isFind) {
-                        // If Find is open, close it
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Replace is open, close it and open Find
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('find');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Find
-                    toggleSearch('find');
-                }
-            },
-            'Cmd-F': (cm: CodeMirrorEditor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isFind = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === false;
-                    if (isFind) {
-                        // If Find is open, close it
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Replace is open, close it and open Find
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('find');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Find
-                    toggleSearch('find');
-                }
-            },
-            'Ctrl-H': (cm: CodeMirrorEditor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
-                    if (isReplace) {
-                        // If Replace is open, close it (do not reopen)
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Find is open, close and open Replace
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('replace');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Replace
-                    toggleSearch('replace');
-                }
-            },
-            'Cmd-H': (cm: CodeMirrorEditor) => {
-                const wrapper = cm.getWrapperElement();
-                const existingDialog = wrapper.querySelector('.CodeMirror-dialog');
-                if (existingDialog) {
-                    const isReplace = existingDialog.querySelector('input[type="text"]')?.getAttribute('placeholder')?.includes('Replace') === true;
-                    if (isReplace) {
-                        // If Replace is open, close it (do not reopen)
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                        }, 200);
-                    } else {
-                        // If Find is open, close and open Replace
-                        existingDialog.classList.remove('visible');
-                        setTimeout(() => {
-                            cm.execCommand('clearSearch');
-                            existingDialog.remove();
-                            toggleSearch('replace');
-                        }, 200);
-                    }
-                } else {
-                    // If nothing is open, open Replace
-                    toggleSearch('replace');
-                }
-            },
-            'Ctrl-/': 'toggleComment',
-            'Cmd-/': 'toggleComment'
-        },
-        ...additionalOptions
-    });
-}
-
 export function setDarkMode(value: boolean): void {
-    darkMode = value;
+  isDarkMode = value;
+  Object.values(editors).forEach((editor) => {
+    editor.view.dispatch({
+      effects: editor.themeCompartment.reconfigure(
+        isDarkMode ? monokai : bbedit
+      ),
+    });
+  });
 }
 
 export function setAutoRun(value: boolean): void {
-    autoRun = value;
+  isAutoRun = value;
+}
+
+function createEditorConfig(
+  language: Extension,
+  container: HTMLElement,
+  content: string
+): CodeMirrorEditor {
+  const themeCompartment = new Compartment();
+  const autoRunCompartment = new Compartment();
+
+  const view = new EditorView({
+    state: EditorState.create({
+      doc: content,
+      extensions: [
+        lineNumbers(),
+        language,
+        themeCompartment.of(isDarkMode ? monokai : bbedit),
+        EditorView.lineWrapping,
+        search(),
+        linter(
+          (view) => {
+            return [];
+          },
+          { delay: 100 }
+        ),
+        lintGutter(),
+        keymap.of([
+          ...standardKeymap, // Add standard keymap
+          ...defaultKeymap, // Add default keymap
+          {
+            key: "Ctrl-/",
+            run: (view: EditorView) => {
+              view.dispatch({
+                changes: { from: 0, to: view.state.doc.length, insert: "" },
+              });
+              return true;
+            },
+            preventDefault: true,
+          },
+        ]),
+        autoRunCompartment.of(
+          isAutoRun
+            ? EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                  debounce(runCode, 1000)();
+                }
+              })
+            : []
+        ),
+        // Autosave listener
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            debounce(saveState, 1000)();
+          }
+        }),
+      ],
+    }),
+    parent: container,
+  });
+
+  // Prevent Enter from submitting a form
+  view.dom.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.stopPropagation(); // Prevent form submission
+    }
+  });
+
+  return {
+    view,
+    state: view.state,
+    themeCompartment,
+    autoRunCompartment,
+  };
+}
+
+export function initializeEditors(): void {
+  const htmlContainer = document.getElementById(
+    "html-editor-container"
+  ) as HTMLElement;
+  const cssContainer = document.getElementById(
+    "css-editor-container"
+  ) as HTMLElement;
+  const jsContainer = document.getElementById(
+    "js-editor-container"
+  ) as HTMLElement;
+
+  if (!htmlContainer || !cssContainer || !jsContainer) {
+    throw new Error("Editor containers not found");
+  }
+
+  editors.html = createEditorConfig(html(), htmlContainer, "");
+  editors.css = createEditorConfig(css(), cssContainer, "");
+  editors.js = createEditorConfig(javascript(), jsContainer, "");
 }
