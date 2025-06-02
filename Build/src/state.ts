@@ -13,9 +13,9 @@ export const state: State = {
 };
 
 export function saveState(): void {
-  state.html = editors.html.state.doc.toString();
-  state.css = editors.css.state.doc.toString();
-  state.js = editors.js.state.doc.toString();
+  state.html = editors.html.view.state.doc.toString();
+  state.css = editors.css.view.state.doc.toString();
+  state.js = editors.js.view.state.doc.toString();
   try {
     localStorage.setItem("htmlRunnerState", JSON.stringify(state));
   } catch (e: any) {
@@ -29,54 +29,65 @@ export function loadState(): void {
     if (savedState) {
       const parsed = JSON.parse(savedState);
 
-      if (parsed.html !== undefined) {
+      // Validate state properties
+      if (typeof parsed.html === "string") {
         editors.html.view.dispatch({
           changes: {
             from: 0,
-            to: editors.html.state.doc.length,
+            to: editors.html.view.state.doc.length,
             insert: parsed.html,
           },
         });
       }
-      if (parsed.css !== undefined) {
+      if (typeof parsed.css === "string") {
         editors.css.view.dispatch({
           changes: {
             from: 0,
-            to: editors.css.state.doc.length,
+            to: editors.css.view.state.doc.length,
             insert: parsed.css,
           },
         });
       }
-      if (parsed.js !== undefined) {
+      if (typeof parsed.js === "string") {
         editors.js.view.dispatch({
           changes: {
             from: 0,
-            to: editors.js.state.doc.length,
+            to: editors.js.view.state.doc.length,
             insert: parsed.js,
           },
         });
       }
 
-      if (parsed.activeTab) switchTab(parsed.activeTab);
-      if (parsed.activeOutput) switchOutput(parsed.activeOutput);
-      if (parsed.splitSizes) state.splitSizes = parsed.splitSizes;
+      if (["html", "css", "js"].includes(parsed.activeTab)) {
+        switchTab(parsed.activeTab);
+      }
+      if (["preview", "console"].includes(parsed.activeOutput)) {
+        switchOutput(parsed.activeOutput);
+      }
+      if (
+        Array.isArray(parsed.splitSizes) &&
+        parsed.splitSizes.length === 2 &&
+        parsed.splitSizes.every((size: any) => typeof size === "number")
+      ) {
+        state.splitSizes = parsed.splitSizes;
+      }
 
       runCode();
     } else {
-      resetCode();
+      resetCode(true); // Set default code without confirmation
     }
   } catch (e: any) {
     showError("Failed to load state: " + e.message);
-    resetCode();
+    resetCode(true); // Set default code without confirmation
   }
 }
 
-export function resetCode(): void {
-  if (confirm("Are you sure you want to reset all code?")) {
+export function resetCode(skipConfirmation: boolean = false): void {
+  if (skipConfirmation || confirm("Are you sure you want to reset all code?")) {
     editors.html.view.dispatch({
       changes: {
         from: 0,
-        to: editors.html.state.doc.length,
+        to: editors.html.view.state.doc.length,
         insert: `<!DOCTYPE html>
 <html>
 <head>
@@ -96,7 +107,7 @@ export function resetCode(): void {
     editors.css.view.dispatch({
       changes: {
         from: 0,
-        to: editors.css.state.doc.length,
+        to: editors.css.view.state.doc.length,
         insert: `body {
 font-family: Arial, sans-serif;
 margin: 20px;
@@ -120,7 +131,7 @@ background: #1976D2;
     editors.js.view.dispatch({
       changes: {
         from: 0,
-        to: editors.js.state.doc.length,
+        to: editors.js.view.state.doc.length,
         insert: `function testFunction() {
 console.log('Button clicked!');
 console.warn('This is a warning');

@@ -3,15 +3,19 @@ import { consoleInterceptor } from "./console";
 import { showError, showLoading, hideLoading, switchOutput } from "./ui";
 import { clearConsole, logConsoleError } from "./console";
 import { saveState } from "./state";
-import prettier from "prettier/standalone";
+import * as prettier from "prettier/standalone";
+import * as parserHtml from "prettier/plugins/html";
+import * as parserCss from "prettier/plugins/postcss";
+import * as parserFlow from "prettier/plugins/flow";
+import * as prettierPluginEstree from "prettier/plugins/estree";
 
 export function runCode(): void {
   showLoading();
   clearConsole();
   try {
-    const html = editors.html.state.doc.toString(); // Updated for CodeMirror 6
-    const css = editors.css.state.doc.toString(); // Updated for CodeMirror 6
-    const js = editors.js.state.doc.toString(); // Updated for CodeMirror 6
+    const html = editors.html.view.state.doc.toString();
+    const css = editors.css.view.state.doc.toString();
+    const js = editors.js.view.state.doc.toString();
 
     // Pre-parse JS
     try {
@@ -54,13 +58,13 @@ export function runCode(): void {
         "</style>",
         "<script>",
         consoleInterceptor,
-        "<\/script>",
+        "</script>",
         "</head><body>",
         html,
         "</body>",
         "<script>",
         js,
-        "<\/script></html>",
+        "</script></html>",
       ].join("");
     }
 
@@ -84,42 +88,59 @@ export function runCode(): void {
 export async function formatCode(): Promise<void> {
   try {
     const formattedHtml = await prettier.format(
-      editors.html.state.doc.toString(),
+      editors.html.view.state.doc.toString(),
       {
         parser: "html",
-        plugins: window.prettierPlugins,
+        plugins: [parserHtml],
+        printWidth: 100,
+        tabWidth: 2,
+        htmlWhitespaceSensitivity: "css",
       }
     );
     const formattedCss = await prettier.format(
-      editors.css.state.doc.toString(),
+      editors.css.view.state.doc.toString(),
       {
         parser: "css",
-        plugins: window.prettierPlugins,
+        plugins: [parserCss],
+        printWidth: 100,
+        tabWidth: 2,
       }
     );
-    const formattedJs = await prettier.format(editors.js.state.doc.toString(), {
-      parser: "babel",
-      plugins: window.prettierPlugins,
-    });
+    const formattedJs = await prettier.format(
+      editors.js.view.state.doc.toString(),
+      {
+        parser: "flow",
+        plugins: [
+          parserFlow,
+          (prettierPluginEstree as any).default || prettierPluginEstree,
+        ],
+        printWidth: 100,
+        tabWidth: 2,
+        semi: true,
+        singleQuote: true,
+        trailingComma: "es5",
+        bracketSpacing: true,
+      }
+    );
 
     editors.html.view.dispatch({
       changes: {
         from: 0,
-        to: editors.html.state.doc.length,
+        to: editors.html.view.state.doc.length,
         insert: formattedHtml,
       },
     });
     editors.css.view.dispatch({
       changes: {
         from: 0,
-        to: editors.css.state.doc.length,
+        to: editors.css.view.state.doc.length,
         insert: formattedCss,
       },
     });
     editors.js.view.dispatch({
       changes: {
         from: 0,
-        to: editors.js.state.doc.length,
+        to: editors.js.view.state.doc.length,
         insert: formattedJs,
       },
     });

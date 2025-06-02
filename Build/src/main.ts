@@ -25,6 +25,10 @@ import {
   StackInfo,
   CodeMirrorEditor,
 } from "./types";
+import { consoleInterceptor, consoleOutput, clearConsole, logConsoleError } from "./console";
+import { runCode, formatCode } from "./runner";
+import { resetCode, state, saveState, loadState } from "./state";
+import { switchTab, switchOutput, showError, showLoading, hideLoading, updateThemeIcon, setPageDarkMode } from "./ui"; // Import updateThemeIcon
 
 // Type declarations for global window properties
 declare global {
@@ -45,15 +49,6 @@ declare global {
   }
 }
 
-const state: State = {
-  html: "",
-  css: "",
-  js: "",
-  activeTab: "html",
-  activeOutput: "preview",
-  splitSizes: [50, 50],
-};
-
 // Register Prettier plugins
 const plugins = [parserHtml, parserCss, parserFlow];
 window.prettierPlugins = plugins;
@@ -63,7 +58,6 @@ let currentOutput: string = "preview";
 let isDarkMode: boolean = localStorage.getItem("darkMode") === "true";
 let isAutoRun: boolean = localStorage.getItem("autoRun") === "true";
 let splitInstance: Split.Instance;
-const consoleOutput = document.getElementById("console") as HTMLDivElement;
 const loadingEl = document.getElementById("loading") as HTMLDivElement;
 const errorEl = document.getElementById("error-message") as HTMLDivElement;
 const preview = document.getElementById("preview") as HTMLIFrameElement;
@@ -71,26 +65,6 @@ const preview = document.getElementById("preview") as HTMLIFrameElement;
 if (!consoleOutput || !loadingEl || !errorEl || !preview) {
   throw new Error("Required DOM elements not found");
 }
-
-// Console interceptor
-const consoleInterceptor = `
-    const originalConsole = { log: console.log, error: console.error, warn: console.warn, info: console.info };
-    function sendToConsole(level, ...args) {
-        window.parent.postMessage({ type: 'console', level, data: args, timestamp: new Date().toISOString() }, '*');
-        originalConsole[level].apply(console, args);
-    }
-    console.log = (...args) => sendToConsole('log', ...args);
-    console.error = (...args) => sendToConsole('error', ...args);
-    console.warn = (...args) => sendToConsole('warn', ...args);
-    console.info = (...args) => sendToConsole('info', ...args);
-    window.onerror = (message, source, lineno, colno, error) => {
-        sendToConsole('error', error || message, { stack: error?.stack });
-        return true;
-    };
-    window.onunhandledrejection = (event) => {
-        sendToConsole('error', event.reason, { stack: event.reason?.stack });
-    };
-`;
 
 // Initialize Split.js
 function initializeSplit() {
@@ -293,259 +267,6 @@ function renderObject(obj: any, level = 0, visited = new WeakSet()): Node {
   return container;
 }
 
-// Save state
-function saveState() {
-  state.html = editors.html.view.state.doc.toString();
-  state.css = editors.css.view.state.doc.toString();
-  state.js = editors.js.view.state.doc.toString();
-  state.activeTab = currentTab;
-  state.activeOutput = currentOutput;
-  try {
-    localStorage.setItem("htmlRunnerState", JSON.stringify(state));
-  } catch (e: any) {
-    showError("Failed to save state: " + e.message);
-  }
-}
-
-// Load state
-function loadState() {
-  try {
-    const savedState = localStorage.getItem("htmlRunnerState");
-    if (savedState) {
-      const parsed = JSON.parse(savedState);
-      editors.html.view.dispatch({
-        changes: {
-          from: 0,
-          to: editors.html.view.state.doc.length,
-          insert: parsed.html || "",
-        },
-      });
-      editors.css.view.dispatch({
-        changes: {
-          from: 0,
-          to: editors.css.view.state.doc.length,
-          insert: parsed.css || "",
-        },
-      });
-      editors.js.view.dispatch({
-        changes: {
-          from: 0,
-          to: editors.js.view.state.doc.length,
-          insert: parsed.js || "",
-        },
-      });
-      if (parsed.activeTab) switchTab(parsed.activeTab);
-      if (parsed.activeOutput) switchOutput(parsed.activeOutput);
-      if (parsed.splitSizes) state.splitSizes = parsed.splitSizes;
-      runCode();
-    } else {
-      resetCode();
-    }
-  } catch (e: any) {
-    showError("Failed to load state: " + e.message);
-    resetCode();
-  }
-}
-
-// Run code
-function runCode() {
-  showLoading();
-  clearConsole();
-  try {
-    const html = editors.html.view.state.doc.toString();
-    const css = editors.css.view.state.doc.toString();
-    const js = editors.js.view.state.doc.toString();
-
-    // Pre-parse JS
-    try {
-      if (js.trim()) new Function(js);
-    } catch (syntaxError: any) {
-      logConsoleError(`SyntaxError: ${syntaxError.message}`);
-      hideLoading();
-      return;
-    }
-
-    let docContent;
-    const isFullHtml = /<html[\s>]|<!doctype html/i.test(html);
-    if (isFullHtml) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-      if (!doc.head)
-        doc.documentElement.insertBefore(
-          document.createElement("head"),
-          doc.body
-        );
-      const script = document.createElement("script");
-      script.textContent = consoleInterceptor;
-      doc.head.appendChild(script);
-      if (css.trim()) {
-        const style = document.createElement("style");
-        style.textContent = css;
-        doc.head.appendChild(style);
-      }
-      if (js.trim()) {
-        const script = document.createElement("script");
-        script.textContent = js;
-        doc.body.appendChild(script);
-      }
-      docContent = doc.documentElement.outerHTML;
-    } else {
-      docContent = [
-        '<!DOCTYPE html><html><head><meta charset="UTF-8">',
-        "<style>",
-        css,
-        "</style>",
-        "<script>",
-        consoleInterceptor,
-        "</script>",
-        "</head><body>",
-        html,
-        "</body>",
-        "<script>",
-        js,
-        "</script></html>",
-      ].join("");
-    }
-
-    const blob = new Blob([docContent], { type: "text/html; charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    if (!preview || !(preview instanceof HTMLIFrameElement)) {
-      throw new Error("Preview element not found or is not an iframe");
-    }
-    preview.src = url;
-    preview.addEventListener("load", () => URL.revokeObjectURL(url));
-    switchOutput("preview");
-    saveState();
-  } catch (error: any) {
-    showError(`Error running code: ${error.message}`);
-  } finally {
-    hideLoading();
-  }
-}
-
-// Format code
-async function formatCode() {
-  try {
-    const formattedHtml = await prettier.format(
-      editors.html.view.state.doc.toString(),
-      {
-        parser: "html",
-        plugins: [parserHtml],
-        printWidth: 100,
-        tabWidth: 2,
-        htmlWhitespaceSensitivity: "css",
-      }
-    );
-    const formattedCss = await prettier.format(
-      editors.css.view.state.doc.toString(),
-      {
-        parser: "css",
-        plugins: [parserCss],
-        printWidth: 100,
-        tabWidth: 2,
-      }
-    );
-    const formattedJs = await prettier.format(
-      editors.js.view.state.doc.toString(),
-      {
-        parser: "flow",
-        plugins: [
-          parserFlow,
-          (prettierPluginEstree as any).default || prettierPluginEstree,
-        ],
-        printWidth: 100,
-        tabWidth: 2,
-        semi: true,
-        singleQuote: true,
-        trailingComma: "es5",
-        bracketSpacing: true,
-      }
-    );
-
-    editors.html.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.html.view.state.doc.length,
-        insert: formattedHtml,
-      },
-    });
-    editors.css.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.css.view.state.doc.length,
-        insert: formattedCss,
-      },
-    });
-    editors.js.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.js.view.state.doc.length,
-        insert: formattedJs,
-      },
-    });
-    saveState();
-  } catch (error: any) {
-    showError(`Error formatting code: ${error.message}`);
-  }
-}
-
-// Switch editor tab
-function switchTab(tab: string): void {
-  currentTab = tab;
-  document.querySelectorAll(".editor-container").forEach((c) => {
-    const container = c as HTMLElement;
-    container.style.display = "none";
-  });
-  document.querySelectorAll(".editor-tabs .tab").forEach((t) => {
-    t.classList.remove("active");
-  });
-
-  const editorContainer = document.getElementById(`${tab}-editor-container`);
-  const tabElement = document.querySelector(
-    `.editor-tabs .tab[data-tab="${tab}"]`
-  );
-
-  if (!editorContainer || !tabElement || !editors[tab]) {
-    console.error(`Invalid tab: ${tab}`);
-    return;
-  }
-
-  editorContainer.style.display = "block";
-  tabElement.classList.add("active");
-  editors[tab].view.focus();
-
-  setTimeout(() => {
-    Object.values(editors).forEach((editor) => editor.view.requestMeasure());
-  }, 0);
-
-  saveState();
-}
-
-// Switch output tab
-function switchOutput(output: string): void {
-  currentOutput = output;
-  const previewEl = document.getElementById("preview");
-  const consoleEl = document.getElementById("console");
-  const targetEl = document.getElementById(output);
-  const tabEl = document.querySelector(
-    `.output-tabs .tab[data-output="${output}"]`
-  );
-
-  if (!previewEl || !consoleEl || !targetEl || !tabEl) {
-    console.error(`Invalid output: ${output}`);
-    return;
-  }
-
-  previewEl.classList.remove("active");
-  consoleEl.classList.remove("active");
-  targetEl.classList.add("active");
-  document
-    .querySelectorAll(".output-tabs .tab")
-    .forEach((t) => t.classList.remove("active"));
-  tabEl.classList.add("active");
-  saveState();
-}
-
 // Toggle auto-run
 function toggleAutoRun(): void {
   isAutoRun = !isAutoRun;
@@ -574,74 +295,6 @@ function updateAutoRunStatus(): void {
   }
 }
 
-// Clear console
-function clearConsole() {
-  consoleOutput.innerHTML = "";
-}
-
-// Reset code
-function resetCode() {
-  if (confirm("Are you sure you want to reset all code?")) {
-    editors.html.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.html.view.state.doc.length,
-        insert: `<!DOCTYPE html>
-<html>
-<head>
-<title>My Page</title>
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
-<script src="main.js"></script>
-<h1>Hello, HTMLRunner!</h1>
-<p>This is a demo page.</p>
-<button onclick="testFunction()">Click me!</button>
-</body>
-</html>`,
-      },
-    });
-    editors.css.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.css.view.state.doc.length,
-        insert: `body {
-font-family: Arial, sans-serif;
-margin: 20px;
-line-height: 1.6;
-}
-button {
-background: #2196F3;
-color: white;
-border: none;
-padding: 10px 15px;
-border-radius: 4px;
-cursor: pointer;
-font-size: 16px;
-}
-button:hover {
-background: #1976D2;
-}`,
-      },
-    });
-    editors.js.view.dispatch({
-      changes: {
-        from: 0,
-        to: editors.js.view.state.doc.length,
-        insert: `function testFunction() {
-console.log('Button clicked!');
-console.warn('This is a warning');
-console.error('This is an error');
-console.info('This is an info');
-console.log('Object:', { name: 'Alice', age: 25, hobbies: ['coding', 'reading'] });
-}`,
-      },
-    });
-    runCode();
-    saveState();
-  }
-}
-
 // Toggle dark mode
 function toggleDarkMode(): void {
   isDarkMode = !isDarkMode;
@@ -649,18 +302,6 @@ function toggleDarkMode(): void {
   document.body.classList.toggle("dark-mode");
   localStorage.setItem("darkMode", String(isDarkMode));
   updateThemeIcon();
-}
-
-function updateThemeIcon(): void {
-  const icon = document.querySelector(".theme-toggle i");
-  const label = document.querySelector(".theme-toggle span");
-  if (label) {
-    label.textContent = isDarkMode ? "Light Mode" : "Dark Mode";
-  }
-  if (icon) {
-    icon.classList.toggle("fa-moon", !isDarkMode);
-    icon.classList.toggle("fa-sun", isDarkMode);
-  }
 }
 
 // Export editors' content as ZIP
@@ -817,53 +458,13 @@ function initializeLogFilters(): void {
 export function toggleSearch(mode: "find" | "replace" = "find"): void {
   const editor = editors[currentTab].view;
   if (editor) {
-    const isOpen = searchPanelOpen(editor.state); // Call the function directly
+    const isOpen = searchPanelOpen(editor.state);
     if (isOpen) {
       closeSearchPanel(editor);
     } else {
       openSearchPanel(editor);
     }
   }
-}
-
-// Utility functions
-function showLoading() {
-  loadingEl.classList.add("active");
-}
-
-function hideLoading() {
-  loadingEl.classList.remove("active");
-}
-
-function showError(message: string): void {
-  errorEl.textContent = message;
-  errorEl.style.display = "block";
-  setTimeout(() => (errorEl.style.display = "none"), 5000);
-}
-
-function logConsoleError(message: string, stack: StackInfo = {}): void {
-  const entry = document.createElement("div");
-  entry.className = "console-entry";
-  const timestamp = document.createElement("span");
-  timestamp.className = "timestamp";
-  timestamp.textContent = new Date().toLocaleTimeString();
-  const msg = document.createElement("span");
-  msg.className = "console-error";
-  msg.textContent = message;
-  if (stack.stack) {
-    const stackEl = document.createElement("div");
-    stackEl.className = "console-stack";
-    stackEl.textContent = stack.stack;
-    stackEl.addEventListener("click", () =>
-      stackEl.classList.toggle("expanded")
-    );
-    msg.appendChild(stackEl);
-  }
-  entry.appendChild(timestamp);
-  entry.appendChild(document.createTextNode(" "));
-  entry.appendChild(msg);
-  consoleOutput.appendChild(entry);
-  consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
 function debounce<T extends (...args: any[]) => any>(
@@ -897,6 +498,7 @@ Object.assign(window, {
 document.addEventListener("DOMContentLoaded", async () => {
   initializeEditors();
   initializeCopyButtons();
+  updateAutoRunStatus();
   initializeLogFilters();
   addGlobalSearchShortcuts();
 
@@ -905,10 +507,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     initializeSearchControls(editorTabs);
   }
 
-  // Auto-format only if no saved state exists
-  if (!localStorage.getItem("htmlRunnerState")) {
-    await formatCode();
+  // Apply dark mode to page and editors on load
+  if (isDarkMode) {
+    setPageDarkMode(true);
   }
-  loadState();
 
+  loadState();
+  formatCode().catch((error) => {
+    showError(`Error formatting code: ${error.message}`);
+  });
 });

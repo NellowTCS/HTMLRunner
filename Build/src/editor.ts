@@ -83,7 +83,7 @@ function createEditor(
 
   const extensions: Extension[] = [
     language,
-    themeCompartment.of(darkMode ? bbedit : monokai), // Use compartment for theme
+    themeCompartment.of(darkMode ? monokai : bbedit), // Use compartment for theme
     EditorView.lineWrapping,
     search(),
     lineNumbers(),
@@ -141,7 +141,7 @@ function createEditor(
 export function setDarkMode(value: boolean): void {
   darkMode = value;
   Object.values(editors).forEach((editor) => {
-    const theme = value ? bbedit : monokai;
+    const theme = value ? monokai : bbedit;
     editor.view.dispatch({
       effects: editor.themeCompartment.reconfigure(theme),
     });

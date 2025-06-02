@@ -6,17 +6,13 @@ import {
   setAutoRun,
 } from "./editor";
 import { saveState } from "./state";
-import { runCode } from "./runner";
+import { runCode } from "./runner"; // Import runCode
 import { debounce } from "./utils";
+import { monokai } from "@uiw/codemirror-theme-monokai";
+import { bbedit } from "@uiw/codemirror-theme-bbedit";
 import { EditorView } from "@codemirror/view";
-import {
-  StateEffect,
-  StateField,
-  Transaction,
-  Extension,
-} from "@codemirror/state";
+import { StateEffect } from "@codemirror/state";
 
-// Define the effect for auto-run toggle
 const autoRunEffect = StateEffect.define<boolean>();
 
 export const loadingEl = document.getElementById("loading") as HTMLDivElement;
@@ -60,7 +56,7 @@ export function switchTab(tab: string): void {
 
   editorContainer.style.display = "block";
   tabElement.classList.add("active");
-  editors[tab].view.focus(); // Ensure focus for the editor
+  editors[tab].view.focus();
   saveState();
 }
 
@@ -95,14 +91,13 @@ export function toggleAutoRun(): void {
   Object.values(editors).forEach((editor) => {
     const handler = debounce(runCode, 1000);
 
-    // Set up the transaction for autoRun effect
     if (isAutoRun) {
       editor.view.dispatch({
-        effects: [autoRunEffect.of(true)], // Activate auto-run
+        effects: [autoRunEffect.of(true)],
       });
     } else {
       editor.view.dispatch({
-        effects: [autoRunEffect.of(false)], // Deactivate auto-run
+        effects: [autoRunEffect.of(false)],
       });
     }
   });
@@ -122,9 +117,8 @@ export function toggleDarkMode(): void {
   document.body.classList.toggle("dark-mode");
   localStorage.setItem("darkMode", String(isDarkMode));
 
-  // Apply dark mode to each editor instance
   Object.values(editors).forEach((editor) => {
-    const newTheme = isDarkMode ? "monokai" : "default";
+    const newTheme = isDarkMode ? monokai : bbedit;
 
     editor.view.dispatch({
       effects: [
@@ -150,4 +144,11 @@ export function updateThemeIcon(): void {
     icon.classList.toggle("fa-moon", !isDarkMode);
     icon.classList.toggle("fa-sun", isDarkMode);
   }
+}
+
+export function setPageDarkMode(value: boolean): void {
+  setDarkMode(value);
+  document.body.classList.toggle("dark-mode", value);
+  localStorage.setItem("darkMode", String(value));
+  updateThemeIcon();
 }
