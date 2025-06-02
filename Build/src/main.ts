@@ -894,7 +894,7 @@ Object.assign(window, {
 });
 
 // Initialize
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initializeEditors();
   initializeCopyButtons();
   initializeLogFilters();
@@ -904,4 +904,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (editorTabs) {
     initializeSearchControls(editorTabs);
   }
+
+  // Auto-format only if no saved state exists
+  if (!localStorage.getItem("htmlRunnerState")) {
+    await formatCode();
+  }
+  loadState();
+
 });
