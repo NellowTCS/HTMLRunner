@@ -47,6 +47,11 @@ A powerful, browser-based HTML/CSS/JavaScript code editor and live preview tool.
 - Copy individual messages or entire console
 - Timestamp for each log entry
 
+## Gallery
+<img width="1280" alt="Screenshot 2025-06-01 at 8 49 54 PM" src="https://github.com/user-attachments/assets/117236d9-2496-4fd0-acf5-6709ff5bf777" />
+<img width="1280" alt="Screenshot 2025-06-01 at 8 48 57 PM" src="https://github.com/user-attachments/assets/8355f015-fca2-4986-a0aa-8cc6c03220c0" />
+<img width="1280" alt="Screenshot 2025-06-01 at 8 49 26 PM" src="https://github.com/user-attachments/assets/ee1024ee-5cb6-4ebc-8736-3e0948238309" />
+
 ## Getting Started
 
 ### Online Version
