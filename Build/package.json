@@ -1,6 +1,6 @@
 {
   "name": "htmlrunner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A small live HTML/JS runner with console capture.",
   "main": "index.js",
   "scripts": {
